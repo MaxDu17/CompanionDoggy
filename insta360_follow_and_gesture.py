@@ -121,6 +121,12 @@ def play_audio(file_path):
 
 import random
 def execute_behavior(name):
+    song_list = [
+        "/home/max/CompanionDoggy/assets/BBP_Dance1.mp3",
+        "/home/max/CompanionDoggy/assets/hounddog.mp3",
+        "/home/max/CompanionDoggy/assets/apt.mp3",
+        "/home/max/CompanionDoggy/assets/shutupdance.mp3"
+    ]
     if name == "Open_Palm":
         print("OPEN PALM EXECUTE -> should only print once")
         sport_client.Hello()
@@ -131,26 +137,28 @@ def execute_behavior(name):
         return True 
     if name == "ILoveYou":
         print("I LOVE YOU EXECUTE -> should only print once")
-        if random.random() > 0.35: 
-            play_audio("/home/max/CompanionDoggy/assets/BBP_Dance1.mp3")
+        r_val = random.random()
+        if r_val > 0.35: 
+            songchoice = random.choice(song_list)
+            play_audio(songchoice)
             # play_audio("/home/max/CompanionDoggy/assets/DogsOutDance1.mp3")
             sport_client.Dance1()
         else: 
             play_audio("/home/max/CompanionDoggy/assets/DogsOutDance2.mp3")
             sport_client.Dance2() # randomly select a dance to do. There's a rare dance that is quite long 
         return True 
-    if name == "Thumb_Up":
-        print("STANDING UP AND ACTIVE")
-        play_audio("/home/max/CompanionDoggy/assets/Bark.mp3")
-        sport_client.StandUp()
-        sport_client.BalanceStand()
-        time.sleep(1)
-        return True 
+    # if name == "Thumb_Up":
+    #     print("STANDING UP AND ACTIVE")
+    #     play_audio("/home/max/CompanionDoggy/assets/Bark.mp3")
+    #     sport_client.StandUp()
+    #     sport_client.BalanceStand()
+    #     time.sleep(1)
+    #     return True 
 
-    if name == "Thumb_Down": 
-        print("SITTING DOWN AND IDLE")
-        sport_client.StandDown()
-        return True 
+    # if name == "Thumb_Down": 
+    #     print("SITTING DOWN AND IDLE")
+    #     sport_client.StandDown()
+    #     return True 
 
     
     if name == "Closed_Fist":
@@ -221,6 +229,12 @@ while True: # MAIN EXECUTION LOOP
     if remoteControl.getDisableState() == 1 and not ispressing:
         active_control = not active_control 
         ispressing = True 
+        if not active_control:
+            play_audio("/home/max/CompanionDoggy/assets/yelp2.mp3")
+        else:
+            play_audio("/home/max/CompanionDoggy/assets/yelp1.mp3")
+
+
     if remoteControl.getDisableState() == 0:
         ispressing = False 
     
