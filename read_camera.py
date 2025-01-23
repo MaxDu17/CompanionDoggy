@@ -25,8 +25,8 @@ if __name__ == "__main__":
         image = cv2.imdecode(image_data, cv2.IMREAD_COLOR)
     
         # Display image
-        import ipdb 
-        ipdb.set_trace()
+        # import ipdb 
+        # ipdb.set_trace()
         cv2.imshow("front_camera", image)
         # Press ESC to stop
         if cv2.waitKey(20) == 27:
