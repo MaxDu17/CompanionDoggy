@@ -92,4 +92,5 @@ else:
     cv.destroyAllWindows()
 
     ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
+    np.save("calibration_matrix.npy", mtx)
     print(mtx)
