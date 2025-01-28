@@ -26,7 +26,6 @@ if NEED_RECAPTURE:
         ret = False
         _, frame = cam.read()
         # Display the captured frame
-        cv.imshow('Camera', frame)
 
 
         criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
