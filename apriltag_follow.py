@@ -57,10 +57,11 @@ remoteControl.Init()
 
 # position_queue = deque(maxlen = 3)
 
-HEADLESS_MODE = False
+HEADLESS_MODE = True
 DEVELOP_MODE = True
 last_tag = None 
 last_error = 0 
+integral_error = 0
 vanish_counter = 0 
 
 def get_onboard_camera_image():
@@ -107,10 +108,7 @@ while True: # MAIN EXECUTION LOOP
                         fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                         fontScale=0.8,
                         color=(0, 0, 255))
-            print(tag.pose_t)
-            # print(tag.pose_R)
-            # rot = Rotation.from_matrix(tag.pose_R).as_euler("YZX")
-            # print(rot)
+           
                 
     
     if len(tags) > 0: 
@@ -118,15 +116,41 @@ while True: # MAIN EXECUTION LOOP
         vanish_counter = 0 
      
     if len(tags) == 0:
+        last_tag = None 
         # print("################ Tag not detected! ###########")
-        vanish_counter += 1 
-        if vanish_counter > 5:
-            last_tag = None # reset if we haven't seen the tag in a moment 
+        # vanish_counter += 1 
+        # if vanish_counter > 5:
+        #     last_tag = None # reset if we haven't seen the tag in a moment 
 
         
     if last_tag is not None: 
+        # TODO: what happens to PD control when the tag isn't detected for a bit? 
         tag_location = last_tag.pose_t 
-    
+
+        position_error = tag_location[0, 0]
+        velocity_error = position_error - last_error 
+        integral_error += position_error 
+        # turn position into velocity 
+        pd_error = position_error + 1 * velocity_error # + 0.05 * integral_error 
+        scaled_position_error = -np.clip(pd_error, -0.5, 0.5)
+        # print(pd_error)
+        # print(velocity_error)
+        # print(integral_error)
+       
+        distance_error = tag_location[2, 0] - 1.2
+        scaled_distance_error = np.clip(distance_error, -0.5, 0.5)
+        last_error = position_error 
+        # print(distance_error)
+        
+        rotation = Rotation.from_matrix(last_tag.pose_R).as_euler('xyz') # , degrees = True)
+        yaw_error = -rotation[1] 
+        scaled_yaw_error = np.clip(yaw_error, -0.5, 0.5)
+        # print(yaw_error)
+
+        
+        sport_client.Move(scaled_distance_error, scaled_position_error, yaw_error)
+        # sport_client.Move(0, scaled_position_error, 0)
+        # sport_client.Move(0, 0, yaw_error)
 
 
 
