@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 import json
 
-from Insta360.Insta360_x4_client import Insta360
+from Insta360Camera.Insta360_x4_client import Insta360
 
 class FrameData:
     def __init__(self, front_rgb, back_rgb, capture_time, receive_time):

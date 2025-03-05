@@ -1,5 +1,5 @@
-from Insta360.CalibratedInsta360 import Insta360Calibrated 
-from Insta360.Insta360_x4_client import Insta360 
+from Insta360Camera.CalibratedInsta360 import Insta360Calibrated 
+from Insta360Camera.Insta360_x4_client import Insta360 
 import cv2 
 
 
