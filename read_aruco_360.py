@@ -37,6 +37,7 @@ def my_estimatePoseSingleMarkers(corners, marker_size, mtx, distortion):
     
     for c in corners:
         nada, R, t = cv2.solvePnP(marker_points, c, mtx, distortion, False, cv2.SOLVEPNP_IPPE_SQUARE)
+        print(mtx, distortion)
         rvecs.append(R)
         tvecs.append(t)
         trash.append(nada)
@@ -92,7 +93,7 @@ cam = Insta360Calibrated(
     camera = camera, camera_resolution=(720, 720), image_save_path='images',camera_calibration_save_path='./camera_calibration'
 )
 # cam.calibrate_camera(chessboard_size=(8, 6), square_size=2.3, num_images=30)
-cam.load_calibration("camera_calibration/fisheye_calibration.json")
+cam.load_calibration("Insta360/camera_calibration/fisheye_calibration.json")
 cam.start_streaming()
 
 
@@ -109,9 +110,6 @@ while True:
     if rvecs is not None:
         for i in range(len(rvecs)):
             print(f"Marker {i}: Rotation Vector: {rvecs[i].flatten()} Translation Vector: {tvecs[i].flatten()}")
-
-        cv2.imshow("Apriltag", image)
-
 
     # img = front 
     # bwimg = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
