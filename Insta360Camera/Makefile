@@ -5,8 +5,10 @@ ARCH := $(shell uname -m)
 # Set library path based on architecture
 ifeq ($(ARCH), x86_64)
     LIBS = -Llib/ -lCameraSDK
-else ifeq ($(ARCH), arm64)
+	LOC = -rpath=lib/
+else ifeq ($(ARCH), aarch64)
     LIBS = -Llib_jetson/ -lCameraSDK
+	LOC = -rpath=lib_jetson/
 else 
     $(error Unsupported architecture: $(ARCH))
 endif
@@ -14,7 +16,7 @@ endif
 
 CXX = g++
 CXXFLAGS = -std=c++17 -Iinclude `pkg-config --cflags opencv4` # Include directory for header files
-LDFLAGS =  -lavcodec -lavutil -lswscale $(LIBS) `pkg-config --libs opencv4` # Path to the library
+LDFLAGS =  -Wl,$(LOC) -lavcodec -lavutil -lswscale $(LIBS) `pkg-config --libs opencv4` # Path to the library
 # LDFLAGS =  -lavcodec -lavutil -lswscale -Llib/ -lCameraSDK  `pkg-config --libs opencv4` # Path to the library
 
 # Directories
