@@ -25,7 +25,10 @@ OBJDIR = obj
 BINDIR = bin
 
 # Files
-SRC = src/stream.cpp # All source files in src/
+# SRC = src/stream.cpp # All source files in src/
+SRC = src/shared_memtest.cpp # All source files in src/
+# SRC = src/main.cpp # All source files in src/
+
 # SRC = src/simple_cam.cpp # All source files in src/
 
 # SRC = $(wildcard $(SRCDIR)/*.cpp)  # All source files in src/
