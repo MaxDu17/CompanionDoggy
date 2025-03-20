@@ -8,7 +8,10 @@ import cv2
 import numpy as np
 import json
 
-from Insta360Camera.Insta360_x4_client import Insta360
+from Insta360Camera.Insta360_x4_client import Insta360SharedMem
+
+# from Insta360_x4_client import Insta360SharedMem
+
 
 class FrameData:
     def __init__(self, front_rgb, back_rgb, capture_time, receive_time):
@@ -488,7 +491,7 @@ class Insta360Calibrated:
 
 if __name__ == "__main__":
     # You can adjust the resolution and fps in this call if needed
-    camera = Insta360('127.0.0.1', 8080)
+    camera = Insta360SharedMem() # ('127.0.0.1', 8080)
 
     cam = Insta360Calibrated(
         camera = camera, camera_resolution=(720, 720), image_save_path='images',camera_calibration_save_path='./camera_calibration'
@@ -504,7 +507,9 @@ if __name__ == "__main__":
             continue 
         front, back = read.front_rgb, read.back_rgb 
         
+        # cv2.imshow("Front", cam.undistort_frame(front))
         cv2.imshow("Front", front)
+
         cv2.imshow("Back", back)
         cv2.waitKey(1)
 

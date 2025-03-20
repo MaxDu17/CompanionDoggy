@@ -1,5 +1,5 @@
 from Insta360Camera.CalibratedInsta360 import Insta360Calibrated 
-from Insta360Camera.Insta360_x4_client import Insta360 
+from Insta360Camera.Insta360_x4_client import Insta360SharedMem 
 import cv2 
 
 
@@ -88,12 +88,12 @@ def estimate_aruco_pose(image, camera_matrix, dist_coeffs, marker_length=160, ar
     return rvecs, tvecs, image
 
 
-camera = Insta360('127.0.0.1', 8080)
+camera = Insta360SharedMem() # ('127.0.0.1', 8080)
 cam = Insta360Calibrated(
     camera = camera, camera_resolution=(720, 720), image_save_path='images',camera_calibration_save_path='./camera_calibration'
 )
 # cam.calibrate_camera(chessboard_size=(8, 6), square_size=2.3, num_images=30)
-cam.load_calibration("Insta360/camera_calibration/fisheye_calibration.json")
+cam.load_calibration("Insta360Camera/camera_calibration/fisheye_calibration.json")
 cam.start_streaming()
 
 
@@ -106,7 +106,7 @@ while True:
     camera_matrix = cam.K
     dist_coeffs = cam.D
     
-    rvecs, tvecs, image = estimate_aruco_pose(front, camera_matrix, dist_coeffs)
+    rvecs, tvecs, image = estimate_aruco_pose(front.copy(), camera_matrix, dist_coeffs)
     if rvecs is not None:
         for i in range(len(rvecs)):
             print(f"Marker {i}: Rotation Vector: {rvecs[i].flatten()} Translation Vector: {tvecs[i].flatten()}")
@@ -126,7 +126,7 @@ while True:
     #                 fontScale=0.8,
     #                 color=(0, 0, 255))
 
-    cv2.imshow("Front", front)
+    cv2.imshow("Front", image)
 
     # cv2.imshow("Back", back)
     cv2.waitKey(1)

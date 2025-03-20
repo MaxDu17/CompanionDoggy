@@ -9,8 +9,53 @@ import os
 import cv2 
 import time 
 
+
+import mmap
+import posix_ipc
+import time
+import os
+import cv2
+import numpy as np 
+
+
 class Insta360SharedMem:
+    def __init__(self):
+        # Constants that match the C++ code
+        SHARED_MEM_NAME = "shared_image"
+        SEMAPHORE_NAME = "image_semaphore"
+        self.IMAGE_SIZE = 1440 * 720 * 3 #1024 * 1024  # 1 MB
+
+        # Open the shared memory using /dev/shm/
+        # /dev/shm is where POSIX shared memory is stored
+        shm_path = f"/dev/shm/{SHARED_MEM_NAME}"
+
+        os.system("sudo chmod 666 " + shm_path)
+        os.system("sudo chmod 666 /dev/shm/sem." + SEMAPHORE_NAME)
+
+        # Open the shared memory file
+        self.fd = os.open(shm_path, os.O_RDWR)
+        self.shared_memory = mmap.mmap(self.fd, self.IMAGE_SIZE, access=mmap.ACCESS_READ)
+
+        # Open the semaphore
+        self.semaphore = posix_ipc.Semaphore("/" + SEMAPHORE_NAME)
     
+    def receive_image(self, crop = None):
+        self.semaphore.acquire()
+        data = self.shared_memory[:self.IMAGE_SIZE]
+        array = np.frombuffer(data, dtype=np.uint8).reshape(720, 1440, 3)
+        if crop == "front":
+            return array[:, 0: array.shape[1] // 2]
+        elif crop == "back":
+            return array[:, array.shape[1] // 2:]
+        else:
+            return array 
+    
+    def clean_up(self):
+        self.shared_memory.close()
+        os.close(self.fd)
+
+        
+
 
 # '127.0.0.1', 8080
 class Insta360Socket:
@@ -63,7 +108,7 @@ class Insta360Socket:
 
 
 if __name__ == "__main__":
-    camera = Insta360('127.0.0.1', 8080)
+    camera = Insta360SharedMem() # ('127.0.0.1', 8080)
     import time 
 
     while True:
