@@ -1,8 +1,12 @@
 from unitree_sdk2py.go2.video.video_client import VideoClient
-import cv2
+from Insta360Camera.CalibratedInsta360 import Insta360Calibrated 
+from Insta360Camera.Insta360_x4_client import Insta360SharedMem 
+
+from read_aruco_360 import estimate_aruco_pose 
+
+import cv2 
 import numpy as np
 import sys
-from dt_apriltags import Detector
 import imageio 
 
 import time
@@ -27,39 +31,10 @@ from safety_stack import RemoteHandler
 
 from scipy.spatial.transform import Rotation
 
-at_detector = Detector(families='tagStandard41h12',
-                       nthreads=1,
-                       quad_decimate=1.0,
-                       quad_sigma=0.0,
-                       refine_edges=1,
-                       decode_sharpening=0.25,
-                       debug=0)
-
 if len(sys.argv)>1:
     ChannelFactoryInitialize(0, sys.argv[1])
 else:
     ChannelFactoryInitialize(0)
-
-
-
-# import os
-# note to self: you have to run this outside of python first 
-# os.system("v4l2-ctl -d /dev/video0 --set-ctrl=exposure_auto=1")
-# os.system("v4l2-ctl -d /dev/video0 --set-ctrl=exposure_absolute=50")
-# this stuff sets up the camera 
-# remember that you need pip install imageio  and sudo apt-get install v4l-utils
-
-client = VideoClient()  # Create a video client
-client.SetTimeout(3.0)
-client.Init()
-
-# Open the default camera
-cam = cv2.VideoCapture(0)
-frame_width = int(cam.get(cv2.CAP_PROP_FRAME_WIDTH))
-frame_height = int(cam.get(cv2.CAP_PROP_FRAME_HEIGHT))
-print(frame_width)
-print(frame_height)
-
 
 sport_client = SportClient()  
 sport_client.SetTimeout(10.0)
@@ -80,18 +55,14 @@ last_error = 0
 integral_error = 0
 vanish_counter = 0 
 
-def get_onboard_camera_image():
-    code, data = client.GetImageSample()
-    if code != 0: 
-        print("Error with camera read!")
-        return -1, False 
 
-    # Convert to numpy image
-    image_data = np.frombuffer(bytes(data), dtype=np.uint8)
-    # print("reading")
-    img = cv2.imdecode(image_data, cv2.IMREAD_GRAYSCALE)
-    color_img = cv2.imdecode(image_data, cv2.IMREAD_COLOR) #cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-    return color_img, True 
+
+camera = Insta360SharedMem() # ('127.0.0.1', 8080)
+cam = Insta360Calibrated(
+    camera = camera, camera_resolution=(720, 720), image_save_path='images',camera_calibration_save_path='./camera_calibration'
+)
+cam.load_calibration("Insta360Camera/camera_calibration/fisheye_calibration.json")
+cam.start_streaming()
 
 while True: # MAIN EXECUTION LOOP 
     # safety  
@@ -99,57 +70,24 @@ while True: # MAIN EXECUTION LOOP
         sport_client.Damp() 
         last_tag = None 
 
-    # color_img, status = get_onboard_camera_image()
-    # try:
-    status, color_img = cam.read()
-    img = cv2.cvtColor(color_img, cv2.COLOR_BGR2GRAY)
-    # except:
-    #     print("skipping; bad read!")
-    #     continue 
-        
+    read = cam.get_camera_frame()
+    if read is None:
+        continue 
+    front, back = read.front_rgb, read.back_rgb 
+    # Define camera intrinsic parameters (example values, replace with actual calibration data)
+    camera_matrix = cam.K
+    dist_coeffs = cam.D
+    rvecs, tvecs, image = estimate_aruco_pose(front.copy(), camera_matrix, dist_coeffs)
+    if rvecs is not None:
+        for i in range(len(rvecs)):
+            # print(f"Marker {i}: Rotation Vector: {rvecs[i].flatten()} Translation Vector: {tvecs[i].flatten()}")
+            print(f"Marker {i}: Translation Vector: {tvecs[i].flatten()}")
 
-
-    cameraMatrix = np.load("calibration_matrix.npy")
-    camera_params = ( cameraMatrix[0,0], cameraMatrix[1,1], cameraMatrix[0,2], cameraMatrix[1,2] )
-
-    # if visualization:
-    #     cv2.imshow('Original image',img)
-
-    tags = at_detector.detect(img, True, camera_params, 0.1)
-
-    # tags = at_detector.detect(img) # , True, camera_params, parameters['sample_test']['tag_size'])
-
-
-    # if not HEADLESS_MODE:
-    for tag in tags:
-        for idx in range(len(tag.corners)):
-            cv2.line(color_img, tuple(tag.corners[idx-1, :].astype(int)), tuple(tag.corners[idx, :].astype(int)), (0, 255, 0), 10)
-        cv2.circle(color_img, (int(tag.center[0]), int(tag.center[1])), 20, (255, 0, 0), -1)
-        cv2.putText(color_img, str(tag.tag_id),
-                    org=(tag.corners[0, 0].astype(int)+10,tag.corners[0, 1].astype(int)+10),
-                    fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                    fontScale=0.8,
-                    color=(0, 0, 255))
-           
-                
-    
-    if len(tags) > 0: 
-        last_tag = tags[-1]  # this ensures that we always have something to track 
-        vanish_counter = 0 
-     
-    if len(tags) == 0:
-        last_tag = None 
-        print("################ Tag not detected! ###########")
-        # vanish_counter += 1 
-        # if vanish_counter > 5:
-        #     last_tag = None # reset if we haven't seen the tag in a moment 
-
+    tag_location = tvecs[0] # currently only tracking one tag 
         
     if last_tag is not None: 
         # TODO: what happens to PD control when the tag isn't detected for a bit? 
-        tag_location = last_tag.pose_t 
-
-        position_error = tag_location[0, 0]
+        position_error = 0.01 * tag_location[0]
         velocity_error = position_error - last_error 
         integral_error += position_error 
         # turn position into velocity 
@@ -159,7 +97,7 @@ while True: # MAIN EXECUTION LOOP
         # print(velocity_error)
         # print(integral_error)
        
-        distance_error = tag_location[2, 0] - 1.2
+        distance_error = 0.05 * (tag_location[2] - 500)
         scaled_distance_error = np.clip(distance_error, -1.5, 2)
         last_error = position_error 
         # print(distance_error)
@@ -172,39 +110,7 @@ while True: # MAIN EXECUTION LOOP
         
         # sport_client.Move(scaled_distance_error, scaled_position_error, yaw_error)
         sport_client.Move(scaled_distance_error, 0, scaled_position_error)
-        # sport_client.Move(0, scaled_position_error, 0)
-        # sport_client.Move(0, 0, yaw_error)
-
-
-
-
-
-        # # TODO: approximate orientation and size of the tag using camera parameters, using that approximate distance 
-        # # approximating orientation allows us to match the rotation of the tag 
-        # rough_scale = np.linalg.norm(last_tag.corners[0] - last_tag.corners[2]) 
-        # HARDCODED_DISTANCE = 110 
-        # distance_error = rough_scale - HARDCODED_DISTANCE 
-        # scaled_distance_error = np.clip(distance_error / 100, -0.5, 0.5)
-        
-        # p_distance_signal = -scaled_distance_error 
-        # # print(scaled_distance_error)
-        # # print(rough_scale)
-        
-        # # track the last detected tag 
-        # center = last_tag.center 
-        # # center is (x, y) and image is (y, x)
-        # position_error = (center[0] - color_img.shape[1] / 2) # -1 accounting for mirroring 
-        # scaled_position_error = np.clip(position_error / (color_img.shape[1]), -0.5, 0.5) # conservative 
-        # error_delta = scaled_position_error - last_error 
-        # last_error = scaled_position_error 
-        
-        # pd_signal = -scaled_position_error + 0.5 * error_delta # the D controller 
-        # # print(-scaled_position_error, pd_signal) 
-        
-        # print(step_value)
-        if not DEVELOP_MODE: 
-            sport_client.Move(p_distance_signal, pd_signal,0)
-        # sport_client.Move(pd_distance_signal, 0,0)
+        # forwards, sideways, rotation 
     
     color_output.append_data(cv2.cvtColor(color_img,cv2.COLOR_BGR2RGB))
     
