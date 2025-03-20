@@ -9,8 +9,11 @@ import os
 import cv2 
 import time 
 
+class Insta360SharedMem:
+    
+
 # '127.0.0.1', 8080
-class Insta360:
+class Insta360Socket:
     def __init__(self, ip, port):
         self.server_socket =  self.set_up_receiver(ip, port)
         self.most_recent_frame = None 

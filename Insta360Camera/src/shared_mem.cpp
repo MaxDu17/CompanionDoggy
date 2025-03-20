@@ -35,8 +35,7 @@ extern "C" {
 
 #define SHARED_MEM_NAME "/shared_image"
 #define SEMAPHORE_NAME "/image_semaphore"
-#define IMAGE_SIZE 1024 * 1024 // 1 MB image
-#define NUM_IMAGES 100
+#define IMAGE_SIZE 1440 * 720 * 3// 1 MB image
 
 struct SharedMemory {
     char data[IMAGE_SIZE];
@@ -71,31 +70,33 @@ public:
         avFrame = av_frame_alloc();
         pkt = av_packet_alloc();
 
+        shm_unlink(SHARED_MEM_NAME); //necessary to work under sudo 
+
          // Open shared memory
         int shm_fd = shm_open(SHARED_MEM_NAME, O_CREAT | O_RDWR, 0666);
         if (shm_fd == -1) {
             std::cerr << "Error creating shared memory." << std::endl;
-            return -1;
+            exit(1);
         }
 
         // Set the size of the shared memory
         if (ftruncate(shm_fd, sizeof(SharedMemory)) == -1) {
             std::cerr << "Error setting size of shared memory." << std::endl;
-            return -1;
+            exit(1);
         }
 
         // Map shared memory
-        SharedMemory* shm_ptr = (SharedMemory*) mmap(nullptr, sizeof(SharedMemory), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+        shm_ptr = (SharedMemory*) mmap(nullptr, sizeof(SharedMemory), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
         if (shm_ptr == MAP_FAILED) {
             std::cerr << "Error mapping shared memory." << std::endl;
-            return -1;
+            exit(1);
         }
 
         // Open semaphore
-        sem_t* sem = sem_open(SEMAPHORE_NAME, O_CREAT, 0666, 0);  // Initial value 0, i.e., not ready
+        sem = sem_open(SEMAPHORE_NAME, O_CREAT, 0666, 0);  // Initial value 0, i.e., not ready
         if (sem == SEM_FAILED) {
             std::cerr << "Error creating semaphore." << std::endl;
-            return -1;
+            exit(1);
         }
 
     }
@@ -107,31 +108,6 @@ public:
 
     void setClient(int new_socket){
         client_socket = new_socket; 
-    }
-
-
-    void sendMatrix(const cv::Mat& mat) {
-        if(client_socket == -1){ //if there isn't a connection, then don't send anything 
-            return;
-        }
-    // Convert cv::Mat to a byte buffer (serialization)
-        std::vector<uchar> buffer;
-        cv::imencode(".jpg", mat, buffer);  // You can use any encoding like .jpg, .png, etc.
-
-        // Send the size of the buffer first
-        int bufferSize = buffer.size();
-        // std::cout << bufferSize << " " << sizeof(bufferSize) << std::endl; 
-        ssize_t result = send(client_socket, &bufferSize, sizeof(bufferSize), MSG_NOSIGNAL); 
-        if(result < 0){
-            client_socket = -1; 
-            return;
-        }
-        // Send the actual data (the encoded image)
-        result = send(client_socket, buffer.data(), bufferSize, MSG_NOSIGNAL); 
-        if(result < 0){
-            client_socket = -1; 
-            return;
-        }
     }
 
     void OnAudioData(const uint8_t* data, size_t size, int64_t timestamp) override {
@@ -180,7 +156,11 @@ public:
                     // sendMatrix(bgr); 
                     cv::Mat smaller; 
                     cv::resize(bgr, smaller, cv::Size(width / 2, height / 2), cv::INTER_LINEAR);
-                    sendMatrix(smaller); 
+                    // std::cout << avFrame->width << " " << avFrame->height << std::endl; 
+                    memcpy(shm_ptr->data, smaller.data, IMAGE_SIZE);
+                    sem_post(sem); //ready! 
+
+                    // sendMatrix(smaller); 
                 }
             }
         }
@@ -196,6 +176,8 @@ private:
     // FILE* file2_;
     int64_t last_timestamp = 0;
     int client_socket = -1; 
+    SharedMemory* shm_ptr; 
+    sem_t* sem; 
     // int server_fd; 
 
     // int client_socket; 
@@ -301,48 +283,49 @@ int main(int argc, char* argv[]) {
     if (cam->StartLiveStreaming(param)) {
         std::cout << "successfully started live stream" << std::endl;
     }
+    while(true); //hang until done 
 
-    //SET UP THE SERVER!! 
-    int server_fd; 
-    std::string SERVER_IP = "127.0.0.1";  // Replace with your receiver's IP address
-    int SERVER_PORT = 8080; 
+    // //SET UP THE SERVER!! 
+    // int server_fd; 
+    // std::string SERVER_IP = "127.0.0.1";  // Replace with your receiver's IP address
+    // int SERVER_PORT = 8080; 
 
-    server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd < 0) {
-        std::cerr << "Socket creation failed" << std::endl;
-        exit(EXIT_FAILURE); 
-    }
+    // server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    // if (server_fd < 0) {
+    //     std::cerr << "Socket creation failed" << std::endl;
+    //     exit(EXIT_FAILURE); 
+    // }
     
-    struct sockaddr_in address;
-    int addrlen = sizeof(address);
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(SERVER_PORT);
+    // struct sockaddr_in address;
+    // int addrlen = sizeof(address);
+    // address.sin_family = AF_INET;
+    // address.sin_addr.s_addr = INADDR_ANY;
+    // address.sin_port = htons(SERVER_PORT);
 
-    // Bind socket to port
-    if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
-        perror("Bind failed");
-        exit(EXIT_FAILURE);
-    }
+    // // Bind socket to port
+    // if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
+    //     perror("Bind failed");
+    //     exit(EXIT_FAILURE);
+    // }
 
-      // Listen for incoming connections
-    if (listen(server_fd, 3) < 0) {
-        perror("Listen failed");
-        exit(EXIT_FAILURE);
-    }
-    std::cout << "Listening on port " << SERVER_PORT << "..." << std::endl;
+    //   // Listen for incoming connections
+    // if (listen(server_fd, 3) < 0) {
+    //     perror("Listen failed");
+    //     exit(EXIT_FAILURE);
+    // }
+    // std::cout << "Listening on port " << SERVER_PORT << "..." << std::endl;
 
    
-    int new_socket; 
-    while(true){
-        std::cout << "Waiting for another connection" << std::endl; 
-    // Accept a client connection
-        if ((new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen)) < 0) {
-            perror("Accept failed");
-            exit(EXIT_FAILURE);
-        }
-        StreamProcessor* processPtr = dynamic_cast<StreamProcessor*>(delegate.get()); //allows us to access the original function 
-        processPtr->setClient(new_socket); 
-    }
-    return 0;
+    // int new_socket; 
+    // while(true){
+    //     std::cout << "Waiting for another connection" << std::endl; 
+    // // Accept a client connection
+    //     if ((new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen)) < 0) {
+    //         perror("Accept failed");
+    //         exit(EXIT_FAILURE);
+    //     }
+    //     StreamProcessor* processPtr = dynamic_cast<StreamProcessor*>(delegate.get()); //allows us to access the original function 
+    //     processPtr->setClient(new_socket); 
+    // }
+    // return 0;
 }

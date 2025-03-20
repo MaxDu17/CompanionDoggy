@@ -18,6 +18,7 @@ struct SharedMemory {
 };
 
 int main() {
+    shm_unlink(SHARED_MEM_NAME);
     // Open shared memory
     int shm_fd = shm_open(SHARED_MEM_NAME, O_CREAT | O_RDWR, 0666);
     if (shm_fd == -1) {

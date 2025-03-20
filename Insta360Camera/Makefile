@@ -26,7 +26,7 @@ BINDIR = bin
 
 # Files
 # SRC = src/stream.cpp # All source files in src/
-SRC = src/shared_memtest.cpp # All source files in src/
+SRC = src/shared_mem.cpp # All source files in src/
 # SRC = src/main.cpp # All source files in src/
 
 # SRC = src/simple_cam.cpp # All source files in src/
