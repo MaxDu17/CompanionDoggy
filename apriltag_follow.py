@@ -68,7 +68,7 @@ sport_client.Init()
 remoteControl = RemoteHandler()
 remoteControl.Init()
 
-color_output = imageio.get_writer(f"videos/{date_time}.mp4", fps = 10)
+# color_output = imageio.get_writer(f"videos/{date_time}.mkv", fps = 10)
 
 
 # position_queue = deque(maxlen = 3)
@@ -202,11 +202,12 @@ while True: # MAIN EXECUTION LOOP
         # # print(-scaled_position_error, pd_signal) 
         
         # print(step_value)
-        if not DEVELOP_MODE: 
-            sport_client.Move(p_distance_signal, pd_signal,0)
+        # if not DEVELOP_MODE: 
+        #     sport_client.Move(p_distance_signal, pd_signal,0)
         # sport_client.Move(pd_distance_signal, 0,0)
     
-    color_output.append_data(cv2.cvtColor(color_img,cv2.COLOR_BGR2RGB))
+    #TODO: WHY DOESN'T THIS WORK ANYMORE?
+    # color_output.append_data(cv2.cvtColor(color_img,cv2.COLOR_BGR2RGB))
     
     if not HEADLESS_MODE: 
         cv2.imshow("Output", color_img)

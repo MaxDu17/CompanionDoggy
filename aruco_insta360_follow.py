@@ -1,4 +1,6 @@
 from unitree_sdk2py.go2.video.video_client import VideoClient
+
+
 from Insta360Camera.CalibratedInsta360 import Insta360Calibrated 
 from Insta360Camera.Insta360_x4_client import Insta360SharedMem 
 
@@ -48,13 +50,12 @@ color_output = imageio.get_writer(f"videos/{date_time}.mp4", fps = 10)
 
 # position_queue = deque(maxlen = 3)
 
-HEADLESS_MODE = True
+HEADLESS_MODE = False
 DEVELOP_MODE = True
 last_tag = None 
 last_error = 0 
 integral_error = 0
 vanish_counter = 0 
-
 
 
 camera = Insta360SharedMem() # ('127.0.0.1', 8080)
@@ -78,16 +79,19 @@ while True: # MAIN EXECUTION LOOP
     camera_matrix = cam.K
     dist_coeffs = cam.D
     rvecs, tvecs, image = estimate_aruco_pose(front.copy(), camera_matrix, dist_coeffs)
+    tag_location = None
     if rvecs is not None:
         for i in range(len(rvecs)):
+            pass
             # print(f"Marker {i}: Rotation Vector: {rvecs[i].flatten()} Translation Vector: {tvecs[i].flatten()}")
-            print(f"Marker {i}: Translation Vector: {tvecs[i].flatten()}")
+            # print(f"Marker {i}: Translation Vector: {tvecs[i].flatten()}")
 
-    tag_location = tvecs[0] # currently only tracking one tag 
+        tag_location = tvecs[0] # currently only tracking one tag 
         
-    if last_tag is not None: 
+    if tag_location is not None: 
         # TODO: what happens to PD control when the tag isn't detected for a bit? 
-        position_error = 0.01 * tag_location[0]
+        tag_location = tag_location[:, 0] # removethe exgtradimension 
+        position_error = 0.005 * tag_location[0]
         velocity_error = position_error - last_error 
         integral_error += position_error 
         # turn position into velocity 
@@ -97,8 +101,9 @@ while True: # MAIN EXECUTION LOOP
         # print(velocity_error)
         # print(integral_error)
        
-        distance_error = 0.05 * (tag_location[2] - 500)
+        distance_error = 0.003 * (tag_location[2] - 750)
         scaled_distance_error = np.clip(distance_error, -1.5, 2)
+    
         last_error = position_error 
         # print(distance_error)
         
@@ -107,15 +112,16 @@ while True: # MAIN EXECUTION LOOP
         # scaled_yaw_error = np.clip(yaw_error, -0.5, 0.5)
         # print(yaw_error)
 
-        
+        print(scaled_distance_error, scaled_position_error)
         # sport_client.Move(scaled_distance_error, scaled_position_error, yaw_error)
-        sport_client.Move(scaled_distance_error, 0, scaled_position_error)
+        # sport_client.Move(scaled_distance_error, 0, scaled_position_error)
         # forwards, sideways, rotation 
     
-    color_output.append_data(cv2.cvtColor(color_img,cv2.COLOR_BGR2RGB))
-    
+    # color_output.append_data(cv2.cvtColor(color_img,cv2.COLOR_BGR2RGB))
+    color_output.append_data(image)
+
     if not HEADLESS_MODE: 
-        cv2.imshow("Output", color_img)
+        cv2.imshow("Output",image)
         if cv2.waitKey(20) == 27:
             break
 

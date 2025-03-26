@@ -492,6 +492,7 @@ class Insta360Calibrated:
 if __name__ == "__main__":
     # You can adjust the resolution and fps in this call if needed
     camera = Insta360SharedMem() # ('127.0.0.1', 8080)
+    raise Exception("not here")
 
     cam = Insta360Calibrated(
         camera = camera, camera_resolution=(720, 720), image_save_path='images',camera_calibration_save_path='./camera_calibration'
