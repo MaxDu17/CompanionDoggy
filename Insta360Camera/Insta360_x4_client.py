@@ -24,6 +24,8 @@ class Insta360SharedMem:
         SHARED_MEM_NAME = "shared_image"
         SEMAPHORE_NAME = "image_semaphore"
         self.IMAGE_SIZE = 1440 * 720 * 3 #1024 * 1024  # 1 MB
+        # self.IMAGE_SIZE = 720 * 360 * 3 #1024 * 1024  # 1 MB
+
 
         # Open the shared memory using /dev/shm/
         # /dev/shm is where POSIX shared memory is stored
@@ -43,6 +45,8 @@ class Insta360SharedMem:
         self.semaphore.acquire()
         data = self.shared_memory[:self.IMAGE_SIZE]
         array = np.frombuffer(data, dtype=np.uint8).reshape(720, 1440, 3)
+        # array = np.frombuffer(data, dtype=np.uint8).reshape(360, 720, 3)
+
         if crop == "front":
             return array[:, 0: array.shape[1] // 2]
         elif crop == "back":

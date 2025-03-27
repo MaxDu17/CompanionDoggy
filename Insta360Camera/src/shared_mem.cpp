@@ -36,6 +36,8 @@ extern "C" {
 #define SHARED_MEM_NAME "/shared_image"
 #define SEMAPHORE_NAME "/image_semaphore"
 #define IMAGE_SIZE 1440 * 720 * 3// 1 MB image
+// #define IMAGE_SIZE 720 * 360 * 3// 1 MB image
+
 
 struct SharedMemory {
     char data[IMAGE_SIZE];
@@ -48,6 +50,12 @@ public:
         //setting up the processing pipeline for the images 
 
         // Find the decoder for the h264
+        // AVCodec* codec = avcodec_find_decoder_by_name("h264_cuvid");
+        // if (!codec) {
+        //     std::cerr << "NVIDIA decoder not available!" << std::endl;
+        //     exit(1); 
+        // }
+
         codec = avcodec_find_decoder(AV_CODEC_ID_H264);
         if (!codec) {
             std::cerr << "Codec not found\n";
@@ -56,13 +64,23 @@ public:
 
         codecCtx = avcodec_alloc_context3(codec);
         codecCtx->flags2 |= AV_CODEC_FLAG2_FAST;
+        codecCtx->thread_count = 4;  // Set the number of threads, e.g., 4
+        codecCtx->thread_type =FF_THREAD_FRAME; // FF_THREAD_FRAME; // Threading per frame (can also be FF_THREAD_SLICE for slice-level threading)
+
+        AVDictionary* opts = NULL;
+        av_dict_set(&opts, "preset", "fast", 0);
+        av_dict_set(&opts, "tune", "zerolatency", 0);
+
+
         if (!codecCtx) {
             std::cerr << "Could not allocate video codec context\n";
             exit(1);
         }
 
         // Open codec
-        if (avcodec_open2(codecCtx, codec, nullptr) < 0) {
+        if (avcodec_open2(codecCtx, codec, &opts) < 0) {
+        // if (avcodec_open2(codecCtx, codec, nullptr) < 0) {
+
             std::cerr << "Could not open codec\n";
             exit(1);
         }
@@ -115,6 +133,15 @@ public:
     }
     void OnVideoData(const uint8_t* data, size_t size, int64_t timestamp, uint8_t streamType, int stream_index = 0) override {
         // Feed data into packet
+
+        // if(time_taken < 10){
+        //     return; 
+        // }
+        // std::cout << data << std::endl; 
+        // std::cout << time_taken << std::endl; 
+        // std::cout << "begin" << std::endl; 
+        start = std::chrono::system_clock::now(); 
+
         if (stream_index == 0) {
             pkt->data = const_cast<uint8_t*>(data);
             pkt->size = size;
@@ -122,7 +149,7 @@ public:
             // // Send the packet to the decoder
             if (avcodec_send_packet(codecCtx, pkt) == 0) {
                 // Receive frame from decoder
-                while (avcodec_receive_frame(codecCtx, avFrame) == 0) {
+                if (avcodec_receive_frame(codecCtx, avFrame) == 0) { //used to be "while"
                     int width = avFrame->width;
                     int height = avFrame->height;
                     int chromaHeight = height / 2;
@@ -149,21 +176,25 @@ public:
                         memcpy(yuv.data + width * height + chromaWidth * chromaHeight + i * chromaWidth, avFrame->data[2] + i * v_stride, chromaWidth);
                     }
 
-                  
+
                          // Convert the YUV420P frame to BGR
+                    end = std::chrono::system_clock::now(); 
+                    double time_taken = std::chrono::duration<double, std::milli>(end-start).count(); 
+                    std::cout << time_taken << std::endl; 
                     cv::Mat bgr;
                     cv::cvtColor(yuv, bgr, cv::COLOR_YUV2BGR_I420);
                     // sendMatrix(bgr); 
                     cv::Mat smaller; 
                     cv::resize(bgr, smaller, cv::Size(width / 2, height / 2), cv::INTER_LINEAR);
+                    
+                    // sem_wait(sem); 
                     // std::cout << avFrame->width << " " << avFrame->height << std::endl; 
                     memcpy(shm_ptr->data, smaller.data, IMAGE_SIZE);
-                    sem_post(sem); //ready! 
-
-                    // sendMatrix(smaller); 
+                    // sem_post(sem); //ready! 
                 }
             }
         }
+        start = std::chrono::system_clock::now(); 
     }
     void OnGyroData(const std::vector<ins_camera::GyroData>& data) override {
     }
@@ -177,6 +208,9 @@ private:
     int64_t last_timestamp = 0;
     int client_socket = -1; 
     SharedMemory* shm_ptr; 
+    int frame_count = 0; 
+    std::chrono::high_resolution_clock::time_point start = std::chrono::system_clock::now(); 
+    std::chrono::high_resolution_clock::time_point end = std::chrono::system_clock::now(); 
     sem_t* sem; 
     // int server_fd; 
 
@@ -274,9 +308,14 @@ int main(int argc, char* argv[]) {
     // cam->SyncLocalTimeToCamera(start);
 
     ins_camera::LiveStreamParam param;
-    param.video_resolution = ins_camera::VideoResolution::RES_720_360P30;
-    param.lrv_video_resulution = ins_camera::VideoResolution::RES_720_360P30;
-    param.video_bitrate = 1024 * 1024 / 2;
+    // param.video_resolution = ins_camera::VideoResolution::RES_1920_1920P24;
+    // param.lrv_video_resulution = ins_camera::VideoResolution::RES_1920_1920P24;
+    // param.video_resolution = ins_camera::VideoResolution::RES_480_240P30 ;
+    // param.lrv_video_resulution = ins_camera::VideoResolution::RES_480_240P30;
+    // param.video_resolution = ins_camera::VideoResolution::RES_720_360P30;
+    // param.lrv_video_resulution = ins_camera::VideoResolution::RES_720_360P30;
+    
+    param.video_bitrate = 1024 * 1024 / 6;
     param.enable_audio = false;
     param.using_lrv = false;
     std::cout << "trying to start stream" << std::endl; 
@@ -284,48 +323,4 @@ int main(int argc, char* argv[]) {
         std::cout << "successfully started live stream" << std::endl;
     }
     while(true); //hang until done 
-
-    // //SET UP THE SERVER!! 
-    // int server_fd; 
-    // std::string SERVER_IP = "127.0.0.1";  // Replace with your receiver's IP address
-    // int SERVER_PORT = 8080; 
-
-    // server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    // if (server_fd < 0) {
-    //     std::cerr << "Socket creation failed" << std::endl;
-    //     exit(EXIT_FAILURE); 
-    // }
-    
-    // struct sockaddr_in address;
-    // int addrlen = sizeof(address);
-    // address.sin_family = AF_INET;
-    // address.sin_addr.s_addr = INADDR_ANY;
-    // address.sin_port = htons(SERVER_PORT);
-
-    // // Bind socket to port
-    // if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
-    //     perror("Bind failed");
-    //     exit(EXIT_FAILURE);
-    // }
-
-    //   // Listen for incoming connections
-    // if (listen(server_fd, 3) < 0) {
-    //     perror("Listen failed");
-    //     exit(EXIT_FAILURE);
-    // }
-    // std::cout << "Listening on port " << SERVER_PORT << "..." << std::endl;
-
-   
-    // int new_socket; 
-    // while(true){
-    //     std::cout << "Waiting for another connection" << std::endl; 
-    // // Accept a client connection
-    //     if ((new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen)) < 0) {
-    //         perror("Accept failed");
-    //         exit(EXIT_FAILURE);
-    //     }
-    //     StreamProcessor* processPtr = dynamic_cast<StreamProcessor*>(delegate.get()); //allows us to access the original function 
-    //     processPtr->setClient(new_socket); 
-    // }
-    // return 0;
 }
