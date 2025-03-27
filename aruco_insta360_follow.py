@@ -59,25 +59,39 @@ vanish_counter = 0
 
 
 camera = Insta360SharedMem() # ('127.0.0.1', 8080)
-cam = Insta360Calibrated(
-    camera = camera, camera_resolution=(720, 720), image_save_path='images',camera_calibration_save_path='./camera_calibration'
-)
-cam.load_calibration("Insta360Camera/camera_calibration/fisheye_calibration.json")
-cam.start_streaming()
+# cam = Insta360Calibrated(
+#     camera = camera, camera_resolution=(720, 720), image_save_path='images',camera_calibration_save_path='./camera_calibration'
+# )
+# cam.load_calibration("Insta360Camera/camera_calibration/fisheye_calibration.json")
+# cam.start_streaming()
 
+control_frequency = 10 
+
+with open("Insta360Camera/camera_calibration/fisheye_calibration.json", "r") as f:
+    calibration = json.load(f)
+camera_matrix = np.array(calibration["K"])
+dist_coeffs = np.array(calibration["D"])
+
+
+start = time.time() 
 while True: # MAIN EXECUTION LOOP 
     # safety  
     if remoteControl.getEstopState() == 1: 
         sport_client.Damp() 
         last_tag = None 
 
-    read = cam.get_camera_frame()
-    if read is None:
+    # read = cam.get_camera_frame()
+    # if read is None:
+    #     continue 
+    # front, back = read.front_rgb, read.back_rgb 
+    # # Define camera intrinsic parameters (example values, replace with actual calibration data)
+    # camera_matrix = cam.K
+    # dist_coeffs = cam.D
+
+    front = camera.receive_image(crop = "front")
+    # read = cam.get_camera_frame()
+    if front is None:
         continue 
-    front, back = read.front_rgb, read.back_rgb 
-    # Define camera intrinsic parameters (example values, replace with actual calibration data)
-    camera_matrix = cam.K
-    dist_coeffs = cam.D
     rvecs, tvecs, image = estimate_aruco_pose(front.copy(), camera_matrix, dist_coeffs)
     tag_location = None
     if rvecs is not None:
@@ -124,5 +138,10 @@ while True: # MAIN EXECUTION LOOP
         cv2.imshow("Output",image)
         if cv2.waitKey(20) == 27:
             break
+    time_elapsed = time.time() - start 
+    print(time_elapsed)
+    time.sleep(max((1/frame_rate) - time_elapsed, 0))
+    start = time.time() 
+    cv2.waitKey(1)
 
 color_output.close()

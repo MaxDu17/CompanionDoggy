@@ -42,7 +42,7 @@ class Insta360SharedMem:
         self.semaphore = posix_ipc.Semaphore("/" + SEMAPHORE_NAME)
     
     def receive_image(self, crop = None):
-        self.semaphore.acquire()
+        # self.semaphore.acquire()
         data = self.shared_memory[:self.IMAGE_SIZE]
         array = np.frombuffer(data, dtype=np.uint8).reshape(720, 1440, 3)
         # array = np.frombuffer(data, dtype=np.uint8).reshape(360, 720, 3)

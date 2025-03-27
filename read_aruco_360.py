@@ -7,6 +7,9 @@ import cv2
 import numpy as np
 import os
 import cv2 
+import time 
+import json 
+
 
 # at_detector = Detector(families='tagStandard41h12',
 #                        nthreads=1,
@@ -87,101 +90,39 @@ def estimate_aruco_pose(image, camera_matrix, dist_coeffs, marker_length=160, ar
     
     return rvecs, tvecs, image
 
-<<<<<<< Updated upstream
-if __name__ =="__main__":
-    camera = Insta360SharedMem() # ('127.0.0.1', 8080)
-    cam = Insta360Calibrated(
-        camera = camera, camera_resolution=(720, 720), image_save_path='images',camera_calibration_save_path='./camera_calibration'
-    )
-    # cam.calibrate_camera(chessboard_size=(8, 6), square_size=2.3, num_images=30)
-    cam.load_calibration("Insta360Camera/camera_calibration/fisheye_calibration.json")
-    cam.start_streaming()
-
-
-    while True:
-        read = cam.get_camera_frame()
-        if read is None:
-            continue 
-        front, back = read.front_rgb, read.back_rgb 
-        # Define camera intrinsic parameters (example values, replace with actual calibration data)
-        camera_matrix = cam.K
-        dist_coeffs = cam.D
-        
-        rvecs, tvecs, image = estimate_aruco_pose(front.copy(), camera_matrix, dist_coeffs)
-        if rvecs is not None:
-            for i in range(len(rvecs)):
-                print(f"Marker {i}: Rotation Vector: {rvecs[i].flatten()} Translation Vector: {tvecs[i].flatten()}")
-
-        # img = front 
-        # bwimg = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        # tags = at_detector.detect(bwimg) # , True, camera_params, parameters['sample_test']['tag_size'])
-        # print(tags)
-
-        # for tag in tags:
-        #     for idx in range(len(tag.corners)):
-        #         cv2.line(img, tuple(tag.corners[idx-1, :].astype(int)), tuple(tag.corners[idx, :].astype(int)), (0, 255, 0))
-
-        #     cv2.putText(img, str(tag.tag_id),
-        #                 org=(tag.corners[0, 0].astype(int)+10,tag.corners[0, 1].astype(int)+10),
-        #                 fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-        #                 fontScale=0.8,
-        #                 color=(0, 0, 255))
-
-        cv2.imshow("Front", image)
-
-        # cv2.imshow("Back", back)
-        cv2.waitKey(1)
-
-
-    # cam.start_streaming()
-    # cam.live_streaming()
-    # cam.live_streaming(undistort=True)  # Start with distortion by default
-    cam.live_streaming_comparison()
-    # cam.stop_streaming()
-    cv2.destroyAllWindows()
-=======
 
 camera = Insta360SharedMem() # ('127.0.0.1', 8080)
-cam = Insta360Calibrated(
-    camera = camera, camera_resolution=(720, 720), image_save_path='images',camera_calibration_save_path='./camera_calibration'
-)
-# cam.calibrate_camera(chessboard_size=(8, 6), square_size=2.3, num_images=30)
-cam.load_calibration("Insta360Camera/camera_calibration/fisheye_calibration.json")
-cam.start_streaming()
+# cam = Insta360Calibrated(
+#     camera = camera, camera_resolution=(720, 720), image_save_path='images',camera_calibration_save_path='./camera_calibration'
+# )
+# # cam.calibrate_camera(chessboard_size=(8, 6), square_size=2.3, num_images=30)
+# cam.load_calibration("Insta360Camera/camera_calibration/fisheye_calibration.json")
+# cam.start_streaming()
 
-import time 
+with open("Insta360Camera/camera_calibration/fisheye_calibration.json", "r") as f:
+    calibration = json.load(f)
+
+camera_matrix = np.array(calibration["K"])
+dist_coeffs = np.array(calibration["D"])
+
 frame_rate = 10
 
 start = time.time() 
 
 while True:
-    read = cam.get_camera_frame()
-    if read is None:
+    front = camera.receive_image(crop = "front")
+    # read = cam.get_camera_frame()
+    if front is None:
         continue 
-    front, back = read.front_rgb, read.back_rgb 
+    # front, back = read.front_rgb, read.back_rgb 
     # Define camera intrinsic parameters (example values, replace with actual calibration data)
-    camera_matrix = cam.K
-    dist_coeffs = cam.D
+    # camera_matrix = cam.K
+    # dist_coeffs = cam.D
     
     rvecs, tvecs, image = estimate_aruco_pose(front.copy(), camera_matrix, dist_coeffs)
     if rvecs is not None:
         for i in range(len(rvecs)):
             print(f"Marker {i}: Rotation Vector: {rvecs[i].flatten()} Translation Vector: {tvecs[i].flatten()}")
-
-    # img = front 
-    # bwimg = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    # tags = at_detector.detect(bwimg) # , True, camera_params, parameters['sample_test']['tag_size'])
-    # print(tags)
-
-    # for tag in tags:
-    #     for idx in range(len(tag.corners)):
-    #         cv2.line(img, tuple(tag.corners[idx-1, :].astype(int)), tuple(tag.corners[idx, :].astype(int)), (0, 255, 0))
-
-    #     cv2.putText(img, str(tag.tag_id),
-    #                 org=(tag.corners[0, 0].astype(int)+10,tag.corners[0, 1].astype(int)+10),
-    #                 fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-    #                 fontScale=0.8,
-    #                 color=(0, 0, 255))
 
     cv2.imshow("Front", image)
 
@@ -199,4 +140,3 @@ while True:
 cam.live_streaming_comparison()
 # cam.stop_streaming()
 cv2.destroyAllWindows()
->>>>>>> Stashed changes
