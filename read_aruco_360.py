@@ -90,53 +90,53 @@ def estimate_aruco_pose(image, camera_matrix, dist_coeffs, marker_length=160, ar
     
     return rvecs, tvecs, image
 
+if __name__ == "__main__":
+    camera = Insta360SharedMem() # ('127.0.0.1', 8080)
+    # cam = Insta360Calibrated(
+    #     camera = camera, camera_resolution=(720, 720), image_save_path='images',camera_calibration_save_path='./camera_calibration'
+    # )
+    # # cam.calibrate_camera(chessboard_size=(8, 6), square_size=2.3, num_images=30)
+    # cam.load_calibration("Insta360Camera/camera_calibration/fisheye_calibration.json")
+    # cam.start_streaming()
 
-camera = Insta360SharedMem() # ('127.0.0.1', 8080)
-# cam = Insta360Calibrated(
-#     camera = camera, camera_resolution=(720, 720), image_save_path='images',camera_calibration_save_path='./camera_calibration'
-# )
-# # cam.calibrate_camera(chessboard_size=(8, 6), square_size=2.3, num_images=30)
-# cam.load_calibration("Insta360Camera/camera_calibration/fisheye_calibration.json")
-# cam.start_streaming()
+    with open("Insta360Camera/camera_calibration/fisheye_calibration.json", "r") as f:
+        calibration = json.load(f)
 
-with open("Insta360Camera/camera_calibration/fisheye_calibration.json", "r") as f:
-    calibration = json.load(f)
+    camera_matrix = np.array(calibration["K"])
+    dist_coeffs = np.array(calibration["D"])
 
-camera_matrix = np.array(calibration["K"])
-dist_coeffs = np.array(calibration["D"])
+    frame_rate = 10
 
-frame_rate = 10
-
-start = time.time() 
-
-while True:
-    front = camera.receive_image(crop = "front")
-    # read = cam.get_camera_frame()
-    if front is None:
-        continue 
-    # front, back = read.front_rgb, read.back_rgb 
-    # Define camera intrinsic parameters (example values, replace with actual calibration data)
-    # camera_matrix = cam.K
-    # dist_coeffs = cam.D
-    
-    rvecs, tvecs, image = estimate_aruco_pose(front.copy(), camera_matrix, dist_coeffs)
-    if rvecs is not None:
-        for i in range(len(rvecs)):
-            print(f"Marker {i}: Rotation Vector: {rvecs[i].flatten()} Translation Vector: {tvecs[i].flatten()}")
-
-    cv2.imshow("Front", image)
-
-    # cv2.imshow("Back", back)
-    time_elapsed = time.time() - start 
-    print(time_elapsed)
-    time.sleep(max((1/frame_rate) - time_elapsed, 0))
     start = time.time() 
-    cv2.waitKey(1)
+
+    while True:
+        front = camera.receive_image(crop = "front")
+        # read = cam.get_camera_frame()
+        if front is None:
+            continue 
+        # front, back = read.front_rgb, read.back_rgb 
+        # Define camera intrinsic parameters (example values, replace with actual calibration data)
+        # camera_matrix = cam.K
+        # dist_coeffs = cam.D
+        
+        rvecs, tvecs, image = estimate_aruco_pose(front.copy(), camera_matrix, dist_coeffs)
+        if rvecs is not None:
+            for i in range(len(rvecs)):
+                print(f"Marker {i}: Rotation Vector: {rvecs[i].flatten()} Translation Vector: {tvecs[i].flatten()}")
+
+        cv2.imshow("Front", image)
+
+        # cv2.imshow("Back", back)
+        time_elapsed = time.time() - start 
+        print(time_elapsed)
+        time.sleep(max((1/frame_rate) - time_elapsed, 0))
+        start = time.time() 
+        cv2.waitKey(1)
 
 
-# cam.start_streaming()
-# cam.live_streaming()
-# cam.live_streaming(undistort=True)  # Start with distortion by default
-cam.live_streaming_comparison()
-# cam.stop_streaming()
-cv2.destroyAllWindows()
+    # cam.start_streaming()
+    # cam.live_streaming()
+    # cam.live_streaming(undistort=True)  # Start with distortion by default
+    cam.live_streaming_comparison()
+    # cam.stop_streaming()
+    cv2.destroyAllWindows()

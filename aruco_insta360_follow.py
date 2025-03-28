@@ -33,6 +33,8 @@ from safety_stack import RemoteHandler
 
 from scipy.spatial.transform import Rotation
 
+import json 
+
 if len(sys.argv)>1:
     ChannelFactoryInitialize(0, sys.argv[1])
 else:
@@ -65,13 +67,14 @@ camera = Insta360SharedMem() # ('127.0.0.1', 8080)
 # cam.load_calibration("Insta360Camera/camera_calibration/fisheye_calibration.json")
 # cam.start_streaming()
 
-control_frequency = 10 
+frame_rate = 10 
 
 with open("Insta360Camera/camera_calibration/fisheye_calibration.json", "r") as f:
     calibration = json.load(f)
+
+
 camera_matrix = np.array(calibration["K"])
 dist_coeffs = np.array(calibration["D"])
-
 
 start = time.time() 
 while True: # MAIN EXECUTION LOOP 
@@ -105,30 +108,30 @@ while True: # MAIN EXECUTION LOOP
     if tag_location is not None: 
         # TODO: what happens to PD control when the tag isn't detected for a bit? 
         tag_location = tag_location[:, 0] # removethe exgtradimension 
-        position_error = 0.005 * tag_location[0]
+        position_error = 0.002 * tag_location[0]
         velocity_error = position_error - last_error 
         integral_error += position_error 
         # turn position into velocity 
         pd_error = position_error # + 1 * velocity_error # + 0.05 * integral_error 
-        scaled_position_error = -np.clip(pd_error, -1, 1)
+        # scaled_position_error = -np.clip(pd_error, -1, 1)
+        scaled_position_error = -np.clip(pd_error, -0.5, 0.5)
+
         # print(pd_error)
         # print(velocity_error)
         # print(integral_error)
        
-        distance_error = 0.003 * (tag_location[2] - 750)
-        scaled_distance_error = np.clip(distance_error, -1.5, 2)
+        distance_error = 0.0015 * (tag_location[2] - 750)
+        # scaled_distance_error = np.clip(distance_error, -1.5, 2)
+        scaled_distance_error = np.clip(distance_error, -0.5, 1)
+
     
         last_error = position_error 
         # print(distance_error)
-        
-        # rotation = Rotation.from_matrix(last_tag.pose_R).as_euler('xyz') # , degrees = True)
-        # yaw_error = -rotation[1] 
-        # scaled_yaw_error = np.clip(yaw_error, -0.5, 0.5)
-        # print(yaw_error)
+
 
         print(scaled_distance_error, scaled_position_error)
         # sport_client.Move(scaled_distance_error, scaled_position_error, yaw_error)
-        # sport_client.Move(scaled_distance_error, 0, scaled_position_error)
+        sport_client.Move(scaled_distance_error, 0, scaled_position_error)
         # forwards, sideways, rotation 
     
     # color_output.append_data(cv2.cvtColor(color_img,cv2.COLOR_BGR2RGB))
@@ -136,10 +139,10 @@ while True: # MAIN EXECUTION LOOP
 
     if not HEADLESS_MODE: 
         cv2.imshow("Output",image)
-        if cv2.waitKey(20) == 27:
+        if cv2.waitKey(1) == 27:
             break
     time_elapsed = time.time() - start 
-    print(time_elapsed)
+    # print(time_elapsed)
     time.sleep(max((1/frame_rate) - time_elapsed, 0))
     start = time.time() 
     cv2.waitKey(1)
