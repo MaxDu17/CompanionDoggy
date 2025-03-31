@@ -74,10 +74,12 @@ GestureRecognizerOptions = mp.tasks.vision.GestureRecognizerOptions
 GestureRecognizerResult = mp.tasks.vision.GestureRecognizerResult
 VisionRunningMode = mp.tasks.vision.RunningMode
 
-
+last_behavior = time.time()
+BEHAVIOR_COOLDOWN = 1 # seconds between behavior exercution 
+executing = False 
 def process_result(result: GestureRecognizerResult, output_image: mp.Image, timestamp_ms: int):
     # print(result.hand_landmarks)
-    global current_name
+    global current_name, last_behavior, BEHAVIOR_COOLDOWN, executing 
     if len(result.hand_landmarks) > 0:
         landmark_x = [x.x for x in result.hand_landmarks[0]]
         x_range = max(landmark_x) - min(landmark_x)
@@ -88,13 +90,34 @@ def process_result(result: GestureRecognizerResult, output_image: mp.Image, time
         current_name = gestures[0][0].category_name
     else:
         current_name = ""
+    # print("PROCESSING")
+    # execute_behavior(current_name)
+
+    # if not executing and time.time() - last_behavior > BEHAVIOR_COOLDOWN:
+    #     print("EXECUTING!!")
+    #     execute_behavior(current_name)
+    #     last_behavior = time.time()
+    # else:
+    #     print("COOLDOWN")
+    
+    # if current_name == "Open_Palm":
+    #     sport_client.Hello() 
 
 def execute_behavior(name):
     if name == "Open_Palm":
+        print("OPEN PALM EXECUTE")
         sport_client.Hello()
+        return True 
+    if name == "Victory":
+        print("VICTORY EXECUTE")
+        sport_client.Stretch()
+        return True 
+    if name == "ILoveYou":
+        print("I LOVE YOU EXECUTE")
+        sport_client.Dance1()
+        return True 
+    return False 
     
-    return time.time()
-
 
 options = GestureRecognizerOptions(
     base_options=BaseOptions(model_asset_path='gesture_recognizer.task'),
@@ -109,7 +132,6 @@ camera = Insta360SharedMem() # ('127.0.0.1', 8080)
 
 frame_rate = 10 
 frame_rate_detector = 4
-behavior_cooldown = 3 # seconds between behavior exercution 
 
 with open("Insta360Camera/camera_calibration/fisheye_calibration.json", "r") as f:
     calibration = json.load(f)
@@ -120,6 +142,7 @@ dist_coeffs = np.array(calibration["D"])
 
 start = time.time() 
 last_detection_frame = time.time()
+
 while True: # MAIN EXECUTION LOOP 
     # safety  
     if remoteControl.getEstopState() == 1: 
@@ -183,16 +206,17 @@ while True: # MAIN EXECUTION LOOP
 
     # detect only if 1) sufficient cooldown 2) framerate 3) flag 
 
-    if time.time() - last_behavior > behavior_cooldown and time.time() - last_detection_frame > (1 / frame_rate_detector) and DETECT_GESTURES:
+    if time.time() - last_detection_frame > (1 / frame_rate_detector) and DETECT_GESTURES:
         imgRGB = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         current_timestamp_ms = int(time.time() * 1000)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=imgRGB)
         recognizer.recognize_async(mp_image, current_timestamp_ms) #, time.time() - start)
         cv2.putText(image, current_name, (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 4, cv2.LINE_AA)
         last_detection_frame = time.time()
-        print(current_name)
-        if current_name is not None:
-            execute_behavior(current_name)
+    if time.time()  - last_behavior > BEHAVIOR_COOLDOWN:
+        executed = execute_behavior(current_name)
+        if executed:
+            last_behavior = time.time()
         
 
     if not HEADLESS_MODE: 

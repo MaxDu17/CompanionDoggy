@@ -74,7 +74,7 @@ def estimate_aruco_pose(image, camera_matrix, dist_coeffs, marker_length=160, ar
 
     
     if ids is None:
-        print("No ArUco markers detected.")
+        # print("No ArUco markers detected.")
         return None, None, image
     
     # Estimate pose of each detected marker
