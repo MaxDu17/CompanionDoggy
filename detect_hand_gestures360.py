@@ -59,7 +59,8 @@ while True:
     if read is None:
         continue 
     front, back = read.front_rgb, read.back_rgb 
-    img = cam.undistort_frame(front) 
+    img = back.copy() 
+    # img = cam.undistort_frame(back) 
     # success, img = cap.read()
 
     # Flip the image(frame)
