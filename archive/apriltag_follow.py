@@ -109,7 +109,7 @@ while True: # MAIN EXECUTION LOOP
         
 
 
-    cameraMatrix = np.load("calibration_matrix.npy")
+    cameraMatrix = np.load("../calibration_matrix.npy")
     camera_params = ( cameraMatrix[0,0], cameraMatrix[1,1], cameraMatrix[0,2], cameraMatrix[1,2] )
 
     # if visualization:

@@ -69,7 +69,7 @@ camera = Insta360SharedMem() # ('127.0.0.1', 8080)
 
 frame_rate = 10 
 
-with open("Insta360Camera/camera_calibration/fisheye_calibration.json", "r") as f:
+with open("../Insta360Camera/camera_calibration/fisheye_calibration.json", "r") as f:
     calibration = json.load(f)
 
 
