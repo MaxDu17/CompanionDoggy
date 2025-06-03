@@ -93,128 +93,6 @@ def plot_line_and_target(frame, vx, vy, x, y, target_x, target_y, view_bounds_li
     
     return frame
 
-# def plot_contours_interactive(frame, contours, roi_offset, view_bounds_list, min_contour_length, min_contour_area):
-#     """Interactive function to display contours and show information about selected ones."""
-#     # Create a copy of the frame for visualization
-#     vis_frame = frame.copy()
-    
-#     # Store contour information for later use
-#     contour_info = []
-    
-#     # Draw all contours without filtering
-#     for i, contour in enumerate(contours):
-#         # Adjust contour points for ROI offset
-#         adjusted_contour = contour.copy()
-#         adjusted_contour[:, :, 1] += roi_offset
-        
-#         # Draw the contour in yellow
-#         cv2.drawContours(vis_frame, [adjusted_contour], 0, (255, 255, 0), 5)
-        
-#         # Get points that are within the view window
-#         points_in_view = []
-#         for point in adjusted_contour:
-#             x, y = point[0]
-#             if (view_bounds_list[0][0] <= x <= view_bounds_list[0][1] and 
-#                 view_bounds_list[0][2] <= y <= view_bounds_list[0][3]):
-#                 points_in_view.append([x, y])
-        
-#         # Store contour information if we have enough points
-#         if len(points_in_view) >= 5:
-#             points_in_view = np.array(points_in_view)
-            
-#             # Center the points
-#             mean = np.mean(points_in_view, axis=0)
-#             centered_points = points_in_view - mean
-            
-#             # Compute covariance matrix
-#             cov = np.cov(centered_points.T)
-            
-#             # Get eigenvectors and eigenvalues
-#             eigenvalues, eigenvectors = np.linalg.eigh(cov)
-            
-#             # Get the principal direction (eigenvector with largest eigenvalue)
-#             principal_direction = eigenvectors[:, np.argmax(eigenvalues)]
-            
-#             # Calculate the line parameters
-#             vx, vy = principal_direction
-#             x, y = mean
-            
-#             # Calculate angle
-#             angle = float(np.arctan2(vy, vx) * 180 / np.pi)
-            
-#             contour_info.append({
-#                 'contour': adjusted_contour,
-#                 'index': i,
-#                 'length': len(contour),
-#                 'area': cv2.contourArea(contour),
-#                 'angle': angle,
-#                 'center': (int(x), int(y)),
-#                 'vx': float(vx),
-#                 'vy': float(vy),
-#                 'points_in_view': points_in_view
-#             })
-    
-#     # Create window and set mouse callback
-#     cv2.namedWindow('Contour Selection')
-#     selected_contour = [None]  # Using list to store selected contour (to modify in callback)
-    
-#     def mouse_callback(event, x, y, flags, param):
-#         if event == cv2.EVENT_LBUTTONDOWN:
-#             # Check if click is inside any contour
-#             for info in contour_info:
-#                 if cv2.pointPolygonTest(info['contour'], (x, y), False) >= 0:
-#                     selected_contour[0] = info
-#                     break
-    
-#     cv2.setMouseCallback('Contour Selection', mouse_callback)
-    
-#     while True:
-#         # Create a copy of the visualization frame
-#         display_frame = vis_frame.copy()
-        
-#         # If a contour is selected, highlight it and show information
-#         if selected_contour[0] is not None:
-#             info = selected_contour[0]
-#             # Draw selected contour in red
-#             cv2.drawContours(display_frame, [info['contour']], 0, (0, 0, 255), 5)
-            
-#             # Draw points used for PCA in green
-#             for point in info['points_in_view']:
-#                 cv2.circle(display_frame, (int(point[0]), int(point[1])), 2, (0, 255, 0), -1)
-            
-#             # Draw PCA direction vector in blue
-#             center = info['center']
-#             vx, vy = info['vx'], info['vy']
-#             cv2.arrowedLine(display_frame, 
-#                           center,
-#                           (int(center[0] + vx*50), int(center[1] + vy*50)),
-#                           (255, 0, 0), 2)
-            
-#             # Display information
-#             info_text = [
-#                 f"Contour {info['index']}",
-#                 f"Length: {info['length']} points",
-#                 f"Area: {info['area']:.2f}",
-#                 f"Angle: {info['angle']:.2f} degrees",
-#                 f"Center: {center}",
-#                 f"Points in view: {len(info['points_in_view'])}"
-#             ]
-            
-#             # Draw text background
-#             for i, text in enumerate(info_text):
-#                 cv2.putText(display_frame, text, (10, 30 + i*30), 
-#                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 3)
-#                 cv2.putText(display_frame, text, (10, 30 + i*30), 
-#                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 1)
-        
-#         # Show the frame
-#         cv2.imshow('Contour Selection', display_frame)
-        
-#         # Break on 'q' press
-#         if cv2.waitKey(1) & 0xFF == ord('q'):
-#             break
-    
-#     cv2.destroyAllWindows()
 
 class LineDetector:
     def __init__(self, width, height, K, D):
@@ -222,6 +100,8 @@ class LineDetector:
         view_x = width // 2  # center x position of view area
         view_y = height // 2 + VIEW_Y_OFFSET  # center y position of view area
 
+        self.width = width 
+        self.height = height 
         # Define target point (where we want the line to pass through)
         self.target_x = width // 2  # center x position
         self.target_y = height // 2 + TARGET_Y_OFFSET  # center y position
@@ -242,7 +122,7 @@ class LineDetector:
 
     def detect_line(self, frame):
         # Apply fisheye correction
-        map1, map2 = cv2.fisheye.initUndistortRectifyMap(K, D, np.eye(3), K, (width, height), cv2.CV_32FC1)
+        map1, map2 = cv2.fisheye.initUndistortRectifyMap(self.K, self.D, np.eye(3), self.K, (self.width, self.height), cv2.CV_32FC1)
         frame = cv2.remap(frame, map1, map2, interpolation=cv2.INTER_LINEAR)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         
@@ -262,7 +142,7 @@ class LineDetector:
         # Find contours
         contours, _ = cv2.findContours(cleaned, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not contours: 
-            return {"success" : False, "message" : "No contours found", "frame" : vis_frame}
+            return {"success" : False, "message" : "No contours found", "frame" : frame.copy()}
     
         best_score = float('inf')
         best_line = None
@@ -332,7 +212,7 @@ class LineDetector:
                 
                 # Plot this line in yellow
                 plot_line_and_target(vis_frame, vx, vy, x, y, self.target_x, self.target_y, 
-                                    view_bounds_list, color=(0, 255, 255))
+                                    self.view_bounds_list, color=(0, 255, 255))
                 
                 if score_info['score'] < best_score:
                     best_score = score_info['score']
@@ -344,7 +224,7 @@ class LineDetector:
 
         # Plot the best line in red
         plot_line_and_target(vis_frame, best_line[0], best_line[1], best_line[2], best_line[3], 
-                            target_x, target_y, view_bounds_list, color=(0, 0, 255))
+                            self.target_x, self.target_y, self.view_bounds_list, color=(0, 0, 255))
         
         # Print line information
         print(f"Distance from target: {best_score_info['point_to_line_distance']:.2f} pixels, "
