@@ -187,6 +187,8 @@ while True: # MAIN EXECUTION LOOP
         # print(integral_error)
        
         distance_error = 0.0015 * (tag_location[2] - 750)
+        # distance_error = 0.0015 * (tag_location[2] - 2000)
+
         # scaled_distance_error = np.clip(distance_error, -1.5, 2)
         scaled_distance_error = np.clip(distance_error, -0.5, 1)
 
@@ -200,7 +202,7 @@ while True: # MAIN EXECUTION LOOP
         sport_client.Move(scaled_distance_error, 0, scaled_position_error)
         # forwards, sideways, rotation 
     
-    # color_output.append_data(cv2.cvtColor(color_img,cv2.COLOR_BGR2RGB))
+    color_output.append_data(cv2.cvtColor(image,cv2.COLOR_BGR2RGB))
     # color_output.append_data(image)
     # don't record video for deployment
 
