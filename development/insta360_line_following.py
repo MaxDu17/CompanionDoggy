@@ -119,7 +119,7 @@ camera = Insta360SharedMem() # ('127.0.0.1', 8080)
 frame_rate = 10 
 frame_rate_detector = 4
 
-with open("Insta360Camera/camera_calibration/fisheye_calibration.json", "r") as f:
+with open("../Insta360Camera/camera_calibration/fisheye_calibration.json", "r") as f:
     calibration = json.load(f)
 camera_matrix = np.array(calibration["K"])
 dist_coeffs = np.array(calibration["D"])
