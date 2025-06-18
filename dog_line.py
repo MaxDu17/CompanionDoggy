@@ -126,7 +126,7 @@ class LineDetector:
 
         # self.past_lines = # set a list of past lines parameteied by angle and something else
 
-        self.blue_line = False
+        self.blue_line = True
 
     def get_principle_axis(self, points_in_view):
         # Center the points
@@ -157,12 +157,14 @@ class LineDetector:
 
         if self.blue_line:
             mask = cv2.inRange(cropped_frame, (190, 90, 0), (255, 255, 120))
+            # mask = cv2.inRange(cropped_frame, (190, 0, 0), (255, 255, 255))
+
         else:
             mask = cv2.inRange(cropped_frame, (210, 210, 210), (255, 255, 255))
 
         # Apply mask to get only the light colored regions
         masked_frame = cv2.bitwise_and(cropped_frame, cropped_frame, mask=mask)
-        # cv2.imshow('masked_frame', masked_frame)
+        cv2.imshow('masked_frame', masked_frame)
 
         # Create a blue background for the masked frame
         blue_bg = np.zeros_like(masked_frame)
@@ -260,14 +262,12 @@ class LineDetector:
         plot_line_and_target(vis_frame, best_line[0], best_line[1], best_line[2], best_line[3],
                              self.target_x, self.target_y, self.view_bounds_list, color=(0, 0, 255))
 
-        if not np.isinf(best_score_info["line_x_at_target"]):
-            cv2.circle(vis_frame, (int(best_score_info["line_x_at_target"]), self.target_y), 5, (255, 0, 255), -1)
+        if np.isinf(best_score_info["line_x_at_target"]): # if line is perpendicular then return no horizontal translation; focus on the angle 
+            return {"success": True, "frame": vis_frame, "best_line": best_line, "angle" : best_score_info['angle'], "x_at_target" : 0}
 
-        # Print line information
-        # print(f"Distance from target: {best_score_info['point_to_line_distance']:.2f} pixels, "
-        #       f"Angle: {best_score_info['angle']:.2f} degrees, "
-        #       f"Y at target x: {best_score_info['line_y_at_target']:.2f}")
-        return {"success": True, "frame": vis_frame, "best_line": best_line, "angle" : best_score_info['point_to_line_distance'], "x_at_target" : best_score_info["line_x_at_target"]}
+        cv2.circle(vis_frame, (int(best_score_info["line_x_at_target"]), self.target_y), 5, (255, 0, 255), -1)
+        x_at_target = best_score_info["line_x_at_target"] - self.target_x
+        return {"success": True, "frame": vis_frame, "best_line": best_line, "angle" : best_score_info['angle'], "x_at_target" : x_at_target}
 
 if __name__ == "__main__":
     video_example_path = "/Users/maxjdu/Downloads/01_02_1970__01_24_15.mp4"
