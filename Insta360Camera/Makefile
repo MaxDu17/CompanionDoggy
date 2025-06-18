@@ -16,7 +16,8 @@ endif
 
 CXX = g++
 CXXFLAGS = -std=c++17 -Iinclude `pkg-config --cflags opencv4` # Include directory for header files
-LDFLAGS =  -Wl,$(LOC) -lavcodec -lavutil -lswscale -lpthread $(LIBS) `pkg-config --libs opencv4` # Path to the library
+LDFLAGS =  -Wl,$(LOC) -lavcodec -lavutil -lswscale -lpthread $(LIBS) `pkg-config --libs opencv4` -lrt # Path to the library
+
 # LDFLAGS =  -lavcodec -lavutil -lswscale -Llib/ -lCameraSDK  `pkg-config --libs opencv4` # Path to the library
 
 # Directories

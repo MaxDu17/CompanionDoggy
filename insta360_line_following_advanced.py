@@ -127,7 +127,7 @@ while True: # MAIN EXECUTION LOOP
     # sport_client.Move(scaled_distance_error, scaled_position_error, yaw_error)
     scaled_position_error = -0.02 * info["x_at_target"]
     print(scaled_position_error)
-    sport_client.Move(0.1, 0, np.clip(scaled_position_error, -0.3, 0.3)) #  scaled_position_error)
+    # sport_client.Move(0.1, 0, np.clip(scaled_position_error, -0.3, 0.3)) #  scaled_position_error)
     # forwards, sideways, rotation
 
     if not HEADLESS_MODE: 
