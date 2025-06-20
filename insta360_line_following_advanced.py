@@ -59,7 +59,6 @@ color_output = imageio.get_writer(f"videos/{date_time}.mp4", fps = 10)
 
 # position_queue = deque(maxlen = 3)
 
-HEADLESS_MODE = False
 DEVELOP_MODE = True
 DETECT_GESTURES = True
 
@@ -97,48 +96,64 @@ cv2.namedWindow("Trackbars")
 def nothing():
     pass
 
-
-
+# TODO: dashboard with event logs and sliders and everything in fullscreen 
+ispressing = False 
+active_control = True 
 while True: # MAIN EXECUTION LOOP 
     # safety  
     if remoteControl.getEstopState() == 1: 
         sport_client.Damp() 
         last_tag = None 
+    if remoteControl.getDisableState() == 1 and not ispressing:
+        active_control = not active_control 
+        ispressing = True 
+    if remoteControl.getDisableState() == 0:
+        ispressing = False 
 
 
     front = camera.receive_image(crop = "back").copy()
     if front is None:
         continue
     info = line_detector.detect_line(front) 
+    cv2.putText(info["frame"], "Control Status: " + ("active" if active_control else "disabled"), (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1, cv2.LINE_AA)
+
     if not info["success"]:
         # show the error message on the camera 
-        cv2.putText(info["frame"], info["message"], (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 4, cv2.LINE_AA)
+        cv2.putText(info["frame"], "ERROR: " + info["message"], (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+
         cv2.imshow("Visual", info["frame"])
         cv2.waitKey(1) # this is to allow the frame to be shown 
         continue 
 
+    # cv2.putText(info["frame"], str(round(info["angle"], 2)), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 4, cv2.LINE_AA)
+
     best_line = info["best_line"]
     cv2.imshow("Visual", info["frame"])
-    print(info["angle"], info["x_at_target"])
+    # print(info["angle"], info["x_at_target"])
     # print(best_line)
     color_output.append_data(cv2.cvtColor(front,cv2.COLOR_BGR2RGB))
+
+    angle_error = -0.02 * (info["angle"] - 90)
 
 
     # sport_client.Move(scaled_distance_error, scaled_position_error, yaw_error)
     scaled_position_error = -0.02 * info["x_at_target"]
-    print(scaled_position_error)
-    # sport_client.Move(0.1, 0, np.clip(scaled_position_error, -0.3, 0.3)) #  scaled_position_error)
+    print(scaled_position_error, angle_error) #
+
+    if active_control: 
+        sport_client.Move(0, np.clip(scaled_position_error, -0.3, 0.3), 0) #, np.clip(angle_error, -0.3, 0.3)) #  scaled_position_error)
     # forwards, sideways, rotation
 
-    if not HEADLESS_MODE: 
-        # cv2.imshow("Output",image)
-        if cv2.waitKey(1) == 27:
+    while True: #this needs to go up top to prevent program from freezing
+        key = cv2.waitKey(1)
+        if key == -1:  # no keycode reported
             break
+        if key == ord('q'):
+            do_stop = True
 
     time_elapsed = time.time() - start 
     # print(time_elapsed)
     time.sleep(max((1/frame_rate) - time_elapsed, 0))
     start = time.time() 
-    cv2.waitKey(1)
 
 color_output.close()

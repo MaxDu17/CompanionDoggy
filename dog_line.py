@@ -28,7 +28,12 @@ def score_line(vx, vy, x, y, target_x, target_y):
     """Score a line based on its distance to target and angle from vertical."""
     # Calculate angle and angle penalty
     angle = float(np.arctan2(vy, vx) * 180 / np.pi)
+   
     angle_diff = abs(angle - (90))  # Difference from vertical
+    print("----")
+    # print(vy, vx, angle)
+    print(angle_diff)
+    print("------")
     angle_penalty = max(0, angle_diff - ANGLE_THRESHOLD) * ANGLE_PENALTY_MULTIPLIER
 
     # Calculate where the line intersects the target x-coordinate
@@ -88,13 +93,13 @@ def plot_line_and_target(frame, vx, vy, x, y, target_x, target_y, view_bounds_li
     #                 (255, 0, 0), 2)
 
     # Draw view rectangles
-    for i, view_bounds in enumerate(view_bounds_list):
-        # Use different colors for different view areas
-        rect_color = (0, 255, 0) if i == 0 else (255, 0, 0)  # Green for first, Red for second
-        cv2.rectangle(frame,
-                      (view_bounds[0], view_bounds[2]),  # top-left
-                      (view_bounds[1], view_bounds[3]),  # bottom-right
-                      rect_color, 2)
+    # for i, view_bounds in enumerate(view_bounds_list):
+    #     # Use different colors for different view areas
+    #     rect_color = (0, 255, 0) if i == 0 else (255, 0, 0)  # Green for first, Red for second
+    #     cv2.rectangle(frame,
+    #                   (view_bounds[0], view_bounds[2]),  # top-left
+    #                   (view_bounds[1], view_bounds[3]),  # bottom-right
+    #                   rect_color, 2)
 
     return frame
 
@@ -112,15 +117,16 @@ class LineDetector:
         self.target_y = height // 2 + TARGET_Y_OFFSET  # center y position
         
         # Calculate view bounds
-        self.view_bounds_list = []
+        # self.view_bounds_list = []
         
         # View area bounds
         self.view_left = view_x - VIEW_WIDTH // 2
         self.view_right = view_x + VIEW_WIDTH // 2
         self.view_top = view_y - VIEW_HEIGHT // 2
         self.view_bottom = view_y + VIEW_HEIGHT // 2
-        self.view_bounds_list.append([self.view_left, self.view_right, self.view_top, self.view_bottom])
-
+        # self.view_bounds_list.append([self.view_left, self.view_right, self.view_top, self.view_bottom])
+        
+        self.view_bounds = [self.view_left, self.view_right, self.view_top, self.view_bottom]
         self.K = K
         self.D = D
 
@@ -141,6 +147,8 @@ class LineDetector:
 
         # Get the principal direction (eigenvector with largest eigenvalue)
         principal_direction = eigenvectors[:, np.argmax(eigenvalues)]
+        if principal_direction[1] < 0: # always have the vector pointing upwards 
+            return -principal_direction 
         return principal_direction
 
 
@@ -204,7 +212,12 @@ class LineDetector:
         # Find contours
         contours, _ = cv2.findContours(cleaned, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not contours:
-            return {"success": False, "message": "No contours found", "frame": frame.copy()}
+            cv2.rectangle(vis_frame,
+                (self.view_bounds[0], self.view_bounds[2]),  # top-left
+                (self.view_bounds[1], self.view_bounds[3]),  # bottom-right
+                (0, 0, 255), 2)
+
+            return {"success": False, "message": "No contours found", "frame": vis_frame.copy()}
 
         best_score = float('inf')
         best_line = None
@@ -260,7 +273,12 @@ class LineDetector:
         #             cv2.LINE_AA)
         # Plot the best line in red
         plot_line_and_target(vis_frame, best_line[0], best_line[1], best_line[2], best_line[3],
-                             self.target_x, self.target_y, self.view_bounds_list, color=(0, 0, 255))
+                             self.target_x, self.target_y, self.view_bounds, color=(0, 0, 255))
+        cv2.rectangle(vis_frame,
+                    (self.view_bounds[0], self.view_bounds[2]),  # top-left
+                    (self.view_bounds[1], self.view_bounds[3]),  # bottom-right
+                    (255, 0, 0), 2)
+
 
         if np.isinf(best_score_info["line_x_at_target"]): # if line is perpendicular then return no horizontal translation; focus on the angle 
             return {"success": True, "frame": vis_frame, "best_line": best_line, "angle" : best_score_info['angle'], "x_at_target" : 0}

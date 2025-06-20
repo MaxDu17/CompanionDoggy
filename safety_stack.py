@@ -119,8 +119,13 @@ class RemoteHandler:
         self.remoteController.parse(wireless_remote_data, verbose = False)
     
     def getEstopState(self):
-        return self.remoteController.L1 
+        # return self.remoteController.L1 
+        return self.remoteController.Down
+
+    def getDisableState(self):
+        return self.remoteController.Up
         
+
 
 
 if __name__ == '__main__':
@@ -135,7 +140,7 @@ if __name__ == '__main__':
     sport_client = SportClient()  
     sport_client.SetTimeout(10.0)
     sport_client.Init()
-
+    
 
     while True:   
         print(remoteControl.getEstopState())
