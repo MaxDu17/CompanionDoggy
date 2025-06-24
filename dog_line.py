@@ -6,6 +6,7 @@
 import cv2
 import time
 import numpy as np
+from colors import BLUE_LINE, WHITE_LINE
 
 # View window parameters
 VIEW_WIDTH = 250  # width of view area
@@ -22,6 +23,70 @@ MIN_POINTS_FOR_PCA = 5  # minimum points needed for PCA line fitting
 # Line scoring parameters
 ANGLE_THRESHOLD = 20  # degrees from vertical before penalty starts
 ANGLE_PENALTY_MULTIPLIER = 5  # multiplier for angle penalty
+
+# Color adjustment parameters
+def nothing(x):
+    pass
+
+def preload_color_ranges(color_type):
+    """Return BGR color ranges for blue or white line detection."""
+    if color_type.lower() == "blue":
+        # Blue line ranges (BGR format)
+        lower_bgr = BLUE_LINE[0]
+        upper_bgr = BLUE_LINE[1]
+    elif color_type.lower() == "white":
+        # White line ranges (BGR format)
+        lower_bgr = WHITE_LINE[0]
+        upper_bgr = WHITE_LINE[1]
+    else:
+        # Default to blue if unknown
+        lower_bgr = BLUE_LINE[0]
+        upper_bgr = BLUE_LINE[1]
+    
+    return lower_bgr, upper_bgr
+
+def create_color_sliders(preload_color="blue"):
+    """Create a window with sliders for adjusting RGB color ranges."""
+    cv2.namedWindow('Color Adjustments', cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('Color Adjustments', 600, 50) 
+    
+    # Position the color slider window at the top
+    cv2.moveWindow('Color Adjustments', 0, 0)
+    
+    # Create trackbars for RGB lower bounds
+    cv2.createTrackbar('R_min', 'Color Adjustments', 0, 255, nothing)
+    cv2.createTrackbar('G_min', 'Color Adjustments', 0, 255, nothing)
+    cv2.createTrackbar('B_min', 'Color Adjustments', 0, 255, nothing)
+    
+    # Create trackbars for RGB upper bounds
+    cv2.createTrackbar('R_max', 'Color Adjustments', 255, 255, nothing)
+    cv2.createTrackbar('G_max', 'Color Adjustments', 255, 255, nothing)
+    cv2.createTrackbar('B_max', 'Color Adjustments', 255, 255, nothing)
+    
+    # Get preloaded color ranges
+    lower_bgr, upper_bgr = preload_color_ranges(preload_color)
+    
+    # Set initial values based on preloaded colors (BGR format in OpenCV)
+    cv2.setTrackbarPos('B_min', 'Color Adjustments', int(lower_bgr[0]))  # Blue minimum
+    cv2.setTrackbarPos('B_max', 'Color Adjustments', int(upper_bgr[0]))  # Blue maximum
+    cv2.setTrackbarPos('G_min', 'Color Adjustments', int(lower_bgr[1]))  # Green minimum
+    cv2.setTrackbarPos('G_max', 'Color Adjustments', int(upper_bgr[1]))  # Green maximum
+    cv2.setTrackbarPos('R_min', 'Color Adjustments', int(lower_bgr[2]))  # Red minimum
+    cv2.setTrackbarPos('R_max', 'Color Adjustments', int(upper_bgr[2]))  # Red maximum
+
+def get_current_color_range():
+    """Get the current RGB color range from the sliders."""
+    r_min = cv2.getTrackbarPos('R_min', 'Color Adjustments')
+    g_min = cv2.getTrackbarPos('G_min', 'Color Adjustments')
+    b_min = cv2.getTrackbarPos('B_min', 'Color Adjustments')
+    r_max = cv2.getTrackbarPos('R_max', 'Color Adjustments')
+    g_max = cv2.getTrackbarPos('G_max', 'Color Adjustments')
+    b_max = cv2.getTrackbarPos('B_max', 'Color Adjustments')
+    
+    lower_bgr = np.array([b_min, g_min, r_min])  # BGR format in OpenCV
+    upper_bgr = np.array([b_max, g_max, r_max])  # BGR format in OpenCV
+    
+    return lower_bgr, upper_bgr
 
 # consistency is important
 def score_line(vx, vy, x, y, target_x, target_y):
@@ -130,9 +195,9 @@ class LineDetector:
         self.K = K
         self.D = D
 
-        # self.past_lines = # set a list of past lines parameteied by angle and something else
+        self.preload_colors = "blue" # or "white"
 
-        self.blue_line = True
+        # self.past_lines = # set a list of past lines parameteied by angle and something else
 
     def get_principle_axis(self, points_in_view):
         # Center the points
@@ -163,16 +228,16 @@ class LineDetector:
 
         # test_colors(cropped_frame)
 
-        if self.blue_line:
-            mask = cv2.inRange(cropped_frame, (190, 90, 0), (255, 255, 120))
-            # mask = cv2.inRange(cropped_frame, (190, 0, 0), (255, 255, 255))
-
-        else:
-            mask = cv2.inRange(cropped_frame, (210, 210, 210), (255, 255, 255))
+        # Get current color range from sliders
+        lower_bgr, upper_bgr = get_current_color_range()
+        
+        # Create mask using dynamic BGR range
+        mask = cv2.inRange(cropped_frame, lower_bgr, upper_bgr)
 
         # Apply mask to get only the light colored regions
         masked_frame = cv2.bitwise_and(cropped_frame, cropped_frame, mask=mask)
         cv2.imshow('masked_frame', masked_frame)
+        cv2.moveWindow("masked_frame", 820, 120)  
 
         # Create a blue background for the masked frame
         blue_bg = np.zeros_like(masked_frame)
@@ -288,7 +353,7 @@ class LineDetector:
         return {"success": True, "frame": vis_frame, "best_line": best_line, "angle" : best_score_info['angle'], "x_at_target" : x_at_target}
 
 if __name__ == "__main__":
-    video_example_path = "/Users/maxjdu/Downloads/01_02_1970__01_24_15.mp4"
+    video_example_path = "/Users/jennifergrannen/Downloads/only_line.mp4"
 
     cap = cv2.VideoCapture(video_example_path)
 
@@ -307,9 +372,24 @@ if __name__ == "__main__":
         K=K,
         D=D
     )
+    
+    # Create color adjustment sliders with preloaded colors
+    create_color_sliders(line_detector.preload_colors)
+    
+    # Position the video window below the color slider
+    cv2.namedWindow("Visual", cv2.WINDOW_NORMAL)
+    cv2.moveWindow("Visual", 100, 120)  # Position below the color slider
+
     output_path = video_example_path.rsplit('.', 1)[0] + '_processed_white.mp4'
     fourcc = cv2.VideoWriter_fourcc(*'avc1')  # Use H.264 codec
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+    print("Color Adjustment Controls:")
+    print("- Use the 'Color Adjustments' window to adjust RGB ranges")
+    print("- R: Red (0-255)")
+    print("- G: Green (0-255)")
+    print("- B: Blue (0-255)")
+    print("- Press 'ESC' to exit")
 
     while True:
         ret, frame = cap.read()
@@ -333,4 +413,5 @@ if __name__ == "__main__":
 
         print(info["angle"], info["x_at_target"])
     out.release()
+    cv2.destroyAllWindows()
 
