@@ -52,7 +52,7 @@ class Insta360SharedMem:
         elif crop == "back":
             return array[:, array.shape[1] // 2:]
         else:
-            return array 
+            return array[:, 0: array.shape[1] // 2],  array[:, array.shape[1] // 2:]
     
     def clean_up(self):
         self.shared_memory.close()

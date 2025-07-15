@@ -161,14 +161,10 @@ while True: # MAIN EXECUTION LOOP
     # read = cam.get_camera_frame()
     if front is None:
         continue 
-    rvecs, tvecs, image = estimate_aruco_pose(front.copy(), camera_matrix, dist_coeffs)
+    rvecs, tvecs, image, ids = estimate_aruco_pose(front.copy(), camera_matrix, dist_coeffs)
+    # TODO: only include one ID to prevent glitch 
     tag_location = None
-    if rvecs is not None:
-        for i in range(len(rvecs)):
-            pass
-            # print(f"Marker {i}: Rotation Vector: {rvecs[i].flatten()} Translation Vector: {tvecs[i].flatten()}")
-            # print(f"Marker {i}: Translation Vector: {tvecs[i].flatten()}")
-
+    if rvecs is not None and ids[0] == 0:
         tag_location = tvecs[0] # currently only tracking one tag 
         
     if tag_location is not None: 

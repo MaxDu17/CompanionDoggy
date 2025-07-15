@@ -40,7 +40,7 @@ def my_estimatePoseSingleMarkers(corners, marker_size, mtx, distortion):
     
     for c in corners:
         nada, R, t = cv2.solvePnP(marker_points, c, mtx, distortion, False, cv2.SOLVEPNP_IPPE_SQUARE)
-        print(mtx, distortion)
+        # print(mtx, distortion)
         rvecs.append(R)
         tvecs.append(t)
         trash.append(nada)
@@ -75,7 +75,7 @@ def estimate_aruco_pose(image, camera_matrix, dist_coeffs, marker_length=160, ar
     
     if ids is None:
         # print("No ArUco markers detected.")
-        return None, None, image
+        return None, None, image, []
     
     # Estimate pose of each detected marker
     rvecs, tvecs, _ = my_estimatePoseSingleMarkers(corners, marker_length, camera_matrix, dist_coeffs)
@@ -88,7 +88,7 @@ def estimate_aruco_pose(image, camera_matrix, dist_coeffs, marker_length=160, ar
     # # Display the image with markers and pose
     # cv2.imshow("Detected ArUco Markers", image)
     
-    return rvecs, tvecs, image
+    return rvecs, tvecs, image, ids
 
 if __name__ == "__main__":
     camera = Insta360SharedMem() # ('127.0.0.1', 8080)

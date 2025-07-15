@@ -95,16 +95,19 @@ def score_line(vx, vy, x, y, target_x, target_y):
     angle = float(np.arctan2(vy, vx) * 180 / np.pi)
    
     angle_diff = abs(angle - (90))  # Difference from vertical
-    print("----")
+    # print("----")
     # print(vy, vx, angle)
-    print(angle_diff)
-    print("------")
+    # print(angle_diff)
+    # print("------")
     angle_penalty = max(0, angle_diff - ANGLE_THRESHOLD) * ANGLE_PENALTY_MULTIPLIER
 
-    # Calculate where the line intersects the target x-coordinate
-    line_y_at_target = y + (target_x - x) * (vy / vx)
-    line_x_at_target = (target_y - y) * (vx / vy) + x
+    line_y_at_target = target_y 
+    line_x_at_target = target_x # default value  
+    if vx > 1e-6: # has a horizontal component 
+        line_y_at_target = y + (target_x - x) * (vy / vx) # where the line intersects with the x value of the target 
 
+    if vy > 1e-6: # this line has a vertical component 
+        line_x_at_target = (target_y - y) * (vx / vy) + x # where the line intersects with the y value of the target
 
     # Calculate actual distance from target point to line
     # Using point-to-line distance formula
@@ -236,7 +239,7 @@ class LineDetector:
 
         # Apply mask to get only the light colored regions
         masked_frame = cv2.bitwise_and(cropped_frame, cropped_frame, mask=mask)
-        cv2.imshow('masked_frame', masked_frame)
+        # cv2.imshow('masked_frame', masked_frame)
         cv2.moveWindow("masked_frame", 820, 120)  
 
         # Create a blue background for the masked frame
@@ -346,11 +349,11 @@ class LineDetector:
 
 
         if np.isinf(best_score_info["line_x_at_target"]): # if line is perpendicular then return no horizontal translation; focus on the angle 
-            return {"success": True, "frame": vis_frame, "best_line": best_line, "angle" : best_score_info['angle'], "x_at_target" : 0}
+            return {"success": True, "frame": vis_frame, "best_line": best_line, "message": "Success", "angle" : best_score_info['angle'], "x_at_target" : 0}
 
         cv2.circle(vis_frame, (int(best_score_info["line_x_at_target"]), self.target_y), 5, (255, 0, 255), -1)
         x_at_target = best_score_info["line_x_at_target"] - self.target_x
-        return {"success": True, "frame": vis_frame, "best_line": best_line, "angle" : best_score_info['angle'], "x_at_target" : x_at_target}
+        return {"success": True, "frame": vis_frame, "best_line": best_line, "message": "Success", "angle" : best_score_info['angle'], "x_at_target" : x_at_target}
 
 if __name__ == "__main__":
     video_example_path = "/Users/jennifergrannen/Downloads/only_line.mp4"

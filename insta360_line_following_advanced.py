@@ -45,7 +45,8 @@ if len(sys.argv)>1:
 else:
     ChannelFactoryInitialize(0)
 
-from dog_line import LineDetector 
+from dog_line import LineDetector, create_color_sliders    
+
 
 sport_client = SportClient()  
 sport_client.SetTimeout(10.0)
@@ -89,16 +90,22 @@ line_detector = LineDetector(
     D = dist_coeffs
 )
 
+create_color_sliders("blue") #line_detector.preload_colors)
 
-# Create a window for the trackbars
-cv2.namedWindow("Trackbars")
-
-def nothing():
-    pass
-
-# TODO: dashboard with event logs and sliders and everything in fullscreen 
 ispressing = False 
 active_control = True 
+do_stop = False 
+no_person = True 
+
+prev_error = None 
+prev_time = None 
+
+
+Kp = -0.01
+Kd = -0.001 #-0.05  # You can tune this
+FORWARD_SPEED = 4 
+PERSON_SWITCH = True
+
 while True: # MAIN EXECUTION LOOP 
     # safety  
     if remoteControl.getEstopState() == 1: 
@@ -109,47 +116,96 @@ while True: # MAIN EXECUTION LOOP
         ispressing = True 
     if remoteControl.getDisableState() == 0:
         ispressing = False 
+    
+    while True: #this needs to go up top to prevent program from freezinggi
+        key = cv2.waitKey(1)
+        if key == -1:  # no keycode reported
+            break
+        if key == ord('q'):
+            do_stop = True
+    if do_stop:
+        break 
 
 
-    front = camera.receive_image(crop = "back").copy()
+    back, front = camera.receive_image() # .copy()
     if front is None:
         continue
-    info = line_detector.detect_line(front) 
+    info = line_detector.detect_line(front) # follow line 
     cv2.putText(info["frame"], "Control Status: " + ("active" if active_control else "disabled"), (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1, cv2.LINE_AA)
+    cv2.putText(info["frame"], "Tracking status: " + info["message"], (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
 
-    if not info["success"]:
+    # detect person 
+    rvecs, tvecs, image, ids = estimate_aruco_pose(back.copy(), camera_matrix, dist_coeffs)
+    tag_location = None
+    if tvecs is not None and ids[0] == 0: # second 
+        tag_location = tvecs[0] # currently only tracking one tag 
+        tag_location = tag_location[:, 0] # removethe exgtradimension 
+        distance = tag_location[2]
+        cv2.putText(info["frame"], "PERSON DISTANCE " + str(round(distance, 1)), (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (140, 140, 140), 2, cv2.LINE_AA)
+        no_person = False
+    else:
+        no_person = True 
+        cv2.putText(info["frame"], "PERSON TAG NOT DETECTED", (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 170), 2, cv2.LINE_AA)
+
+    if not info["success"] or (no_person and PERSON_SWITCH):
         # show the error message on the camera 
-        cv2.putText(info["frame"], "ERROR: " + info["message"], (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
 
         cv2.imshow("Visual", info["frame"])
+        cv2.imshow("Back", back)
+
         cv2.waitKey(1) # this is to allow the frame to be shown 
         continue 
 
     # cv2.putText(info["frame"], str(round(info["angle"], 2)), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 4, cv2.LINE_AA)
 
     best_line = info["best_line"]
-    cv2.imshow("Visual", info["frame"])
+
     # print(info["angle"], info["x_at_target"])
     # print(best_line)
     color_output.append_data(cv2.cvtColor(front,cv2.COLOR_BGR2RGB))
 
-    angle_error = -0.02 * (info["angle"] - 90)
+    # angle_error= -0.02 * (info["angle"] - 90)
+
+    # Persistent storage (you'll need to initialize this in your control loop)
+    current_time = time.time() 
+    if prev_error is None:
+        prev_error = info["x_at_target"]
+        prev_time = time.time()
+
+    error = info["x_at_target"]
+    P = Kp * error
+
+    # Calculate time delta
+    dt = current_time - prev_time 
+    if dt == 0:
+        D = 0
+    else: 
+        # Calculate errors
+        d_error = (error - prev_error) / dt
+        # Compute P and D terms
+        D = Kd * d_error
+
+    control_output = P + D
+
+    prev_error = error
+    prev_time = current_time
 
 
     # sport_client.Move(scaled_distance_error, scaled_position_error, yaw_error)
-    scaled_position_error = -0.02 * info["x_at_target"]
-    print(scaled_position_error, angle_error) #
+    # scaled_position_error = -0.01 * info["x_at_target"]
+        # scaled_position_error = -0.005 * info["x_at_target"]
+    print(control_output)
+    cv2.putText(info["frame"], f"P: {round(P, 2)}, D: {round(D, 2)}, S: {FORWARD_SPEED}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (200, 200, 0), 2, cv2.LINE_AA)
 
     if active_control: 
-        sport_client.Move(0, np.clip(scaled_position_error, -0.3, 0.3), 0) #, np.clip(angle_error, -0.3, 0.3)) #  scaled_position_error)
+        # sport_client.Move(4, 0, np.clip(scaled_position_error, -1.5, 1.5)) #  scaled_position_error)
+        sport_client.Move(FORWARD_SPEED, 0, control_output) #  scaled_position_error)
+
     # forwards, sideways, rotation
 
-    while True: #this needs to go up top to prevent program from freezing
-        key = cv2.waitKey(1)
-        if key == -1:  # no keycode reported
-            break
-        if key == ord('q'):
-            do_stop = True
+    cv2.imshow("Visual", info["frame"])
+    cv2.imshow("Back", back)
+
 
     time_elapsed = time.time() - start 
     # print(time_elapsed)
