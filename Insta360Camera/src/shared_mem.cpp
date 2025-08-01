@@ -35,7 +35,9 @@ extern "C" {
 
 #define SHARED_MEM_NAME "/shared_image"
 #define SEMAPHORE_NAME "/image_semaphore"
+// #define IMAGE_SIZE 2880 * 1440 * 3// 1 MB image
 #define IMAGE_SIZE 1440 * 720 * 3// 1 MB image
+
 // #define IMAGE_SIZE 720 * 360 * 3// 1 MB image
 
 
@@ -183,13 +185,50 @@ public:
                     std::cout << time_taken << std::endl; 
                     cv::Mat bgr;
                     cv::cvtColor(yuv, bgr, cv::COLOR_YUV2BGR_I420);
+
+
+                    // 1. Split the image vertically into left and right halves
+                    int mid_col = bgr.cols / 2;
+
+                    //take entire right iamge and resize 
+                    cv::Mat right = bgr(cv::Rect(mid_col, 0, mid_col, bgr.rows)); //takes the entire image and resizes 
+                    cv::Mat smaller;
+                    // cv::resize(left, smaller, cv::Size(width / 4, height / 2), cv::INTER_LINEAR); // divide by 4 because we cut in half 
+                    cv::resize(right, smaller, cv::Size(right.cols / 2, right.rows / 2), cv::INTER_LINEAR); //cut in half 
+
+                    //crop the left image 
+                    cv::Mat left = bgr(cv::Rect(bgr.cols / 8, bgr.rows / 4, bgr.cols / 4, bgr.rows / 2));
+
+
+
+
+
+                    // cv::Mat left = bgr(cv::Rect(0, 0, mid_col, bgr.rows)); //takes the entire image and resizes 
+
+                    // cv::Mat smaller;
+                    // // cv::resize(left, smaller, cv::Size(width / 4, height / 2), cv::INTER_LINEAR); // divide by 4 because we cut in half 
+                    // cv::resize(left, smaller, cv::Size(left.cols / 2, left.rows / 2), cv::INTER_LINEAR); //cut in half 
+
+                    // //takes the middle half crop of the image directly 
+                    // cv::Mat right = bgr(cv::Rect(5 * bgr.cols / 8, bgr.rows / 4, bgr.cols / 4, bgr.rows / 2));
+                    // // bgr(cv::Rect(mid_col, 0, bgr.cols - mid_col, bgr.rows))
+                    // // std::cout << "Left Image: Rows = " << smaller.rows << ", Cols = " << smaller.cols << std::endl;
+                    // // std::cout << "Right Image: Rows = " << right.rows << ", Cols = " << right.cols << std::endl;
+
+                    cv::Mat result;
+
+                    cv::hconcat(left, smaller, result);
+                    // std::cout << "Right Image: Rows = " << result.rows << ", Cols = " << result.cols << std::endl;
+
+
+
                     // sendMatrix(bgr); 
-                    cv::Mat smaller; 
-                    cv::resize(bgr, smaller, cv::Size(width / 2, height / 2), cv::INTER_LINEAR);
-                    
+                    // cv::Mat smaller; 
+                    // cv::resize(bgr, smaller, cv::Size(width / 2, height / 2), cv::INTER_LINEAR);
+                    // smaller = bgr; 
                     // sem_wait(sem); 
                     // std::cout << avFrame->width << " " << avFrame->height << std::endl; 
-                    memcpy(shm_ptr->data, smaller.data, IMAGE_SIZE);
+                    memcpy(shm_ptr->data, result.data, IMAGE_SIZE);
                     // sem_post(sem); //ready! 
                 }
             }
@@ -315,12 +354,14 @@ int main(int argc, char* argv[]) {
     // param.video_resolution = ins_camera::VideoResolution::RES_720_360P30;
     // param.lrv_video_resulution = ins_camera::VideoResolution::RES_720_360P30;
     
-    param.video_bitrate = 1024 * 1024 / 6;
+    // param.video_bitrate = 1024 * 1024 / 6;
     param.enable_audio = false;
     param.using_lrv = false;
     std::cout << "trying to start stream" << std::endl; 
     if (cam->StartLiveStreaming(param)) {
         std::cout << "successfully started live stream" << std::endl;
     }
-    while(true); //hang until done 
+    cam->SetTimeout(1000);
+    while(cam->IsConnected()); 
+    // while(true); //hang until done 
 }
