@@ -19,11 +19,11 @@ import numpy as np
 
 
 class Insta360SharedMem:
-    def __init__(self):
+    def __init__(self, wait_for_camera = True):
         # Constants that match the C++ code
         self.SHARED_MEM_NAME = "shared_image"
         self.SEMAPHORE_NAME = "image_semaphore"
-        self.use_signal = True 
+        self.use_signal = wait_for_camera
         self.IMAGE_SIZE = 1440 * 720 * 3 #1024 * 1024  # 1 MB
         # self.IMAGE_SIZE = 2880 * 1440 * 3
         # self.IMAGE_SIZE = 720 * 360 * 3 #1024 * 1024  # 1 MB

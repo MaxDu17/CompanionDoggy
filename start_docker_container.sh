@@ -18,5 +18,3 @@ docker run -it --rm \
   -w /home/real \
   $IMAGE_NAME \
   zsh -c 'source ~/.zshrc; conda activate robot; cd ~/CompanionDoggy; python insta360_line_following_advanced.py' #exec zsh -l'
-  # -c conda activate robot; echo test 
-  # zsh -l -c conda activate robot; cd ~/CompanionDoggy; python insta360_line_following_advanced.py

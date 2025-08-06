@@ -109,6 +109,9 @@ Kd *= 1
 FORWARD_SPEED = 5
 PERSON_SWITCH = False
 
+print(sport_client.SwitchGait(2)) # fast trot 
+print(sport_client.SpeedLevel(1)) # fast mode 
+
 while True: # MAIN EXECUTION LOOP 
     # safety  
     if remoteControl.getEstopState() == 1: 
@@ -138,7 +141,7 @@ while True: # MAIN EXECUTION LOOP
     cv2.putText(info["frame"], "Tracking status: " + info["message"], (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
 
     # detect person 
-    rvecs, tvecs, image, ids = estimate_aruco_pose(back.copy(), camera_matrix, dist_coeffs)
+    rvecs, tvecs, image, ids = estimate_aruco_pose(back.copy(), camera_matrix, dist_coeffs) # TODO: THIS MIGHT NOT BE CORRECT ANYMORE 
     tag_location = None
     if tvecs is not None and ids[0] == 0: # second 
         tag_location = tvecs[0] # currently only tracking one tag 
