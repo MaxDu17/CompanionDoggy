@@ -17,9 +17,9 @@ def generate_aruco_tag(dictionary_type, marker_id, marker_size, output_filename)
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate an ArUco marker.")
     parser.add_argument("--dict", type=int, default=cv2.aruco.DICT_6X6_250, help="ArUco dictionary type (e.g., cv2.aruco.DICT_6X6_250)")
-    parser.add_argument("--id", type=int, default=0, help="Marker ID")
+    parser.add_argument("--id", type=int, default=7, help="Marker ID")
     parser.add_argument("--size", type=int, default=500, help="Marker size in pixels")
-    parser.add_argument("--output", type=str, default="aruco_marker.png", help="Output filename")
+    parser.add_argument("--output", type=str, default="aruco_marker_7.png", help="Output filename")
     
     args = parser.parse_args()
     
