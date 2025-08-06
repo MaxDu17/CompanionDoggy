@@ -45,6 +45,7 @@ if len(sys.argv)>1:
 else:
     ChannelFactoryInitialize(0)
 
+
 sport_client = SportClient()  
 sport_client.SetTimeout(10.0)
 sport_client.Init()
@@ -94,6 +95,22 @@ def process_result(result: GestureRecognizerResult, output_image: mp.Image, time
         current_name = ""
 
 
+import socket
+import sys
+
+SOCKET_PATH = "/tmp/audio_socket"  # Inside container mount point
+
+
+
+def play_audio(file_path):
+    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    client.connect(SOCKET_PATH)
+    client.sendall(file_path.encode())
+    client.close()
+
+    print(f"[DOCKER] Sent play request for: {file_path}")
+
+
 # 1 - Closed fist, label: Closed_Fist
 # 2 - Open palm, label: Open_Palm
 # 3 - Pointing up, label: Pointing_Up
@@ -102,7 +119,7 @@ def process_result(result: GestureRecognizerResult, output_image: mp.Image, time
 # 6 - Victory, label: Victory
 # 7 - Love, label: ILoveYou
 
-import random 
+import random
 def execute_behavior(name):
     if name == "Open_Palm":
         print("OPEN PALM EXECUTE -> should only print once")
@@ -115,12 +132,16 @@ def execute_behavior(name):
     if name == "ILoveYou":
         print("I LOVE YOU EXECUTE -> should only print once")
         if random.random() > 0.2: 
+            play_audio("/home/max/CompanionDoggy/assets/BBP_Dance1.mp3")
+            # play_audio("/home/max/CompanionDoggy/assets/DogsOutDance1.mp3")
             sport_client.Dance1()
         else: 
+            play_audio("/home/max/CompanionDoggy/assets/DogsOutDance2.mp3")
             sport_client.Dance2() # randomly select a dance to do. There's a rare dance that is quite long 
         return True 
     if name == "Thumb_Up":
         print("STANDING UP AND ACTIVE")
+        play_audio("/home/max/CompanionDoggy/assets/Bark.mp3")
         sport_client.StandUp()
         sport_client.BalanceStand()
         return True 
@@ -132,9 +153,7 @@ def execute_behavior(name):
 
     
     if name == "Closed_Fist":
-        pass # BARK BARK  
-        return True 
-
+        play_audio("/home/max/CompanionDoggy/assets/Bark.mp3")
     
     if name == "EXCEPTIONAL_POUNCE":
         # ANNOUNCE  
@@ -147,7 +166,7 @@ def execute_behavior(name):
 
 
     return False 
-    
+
 
 options = GestureRecognizerOptions(
     base_options=BaseOptions(model_asset_path='gesture_recognizer.task'),
@@ -219,7 +238,6 @@ while True: # MAIN EXECUTION LOOP
         continue 
     rvecs, tvecs, image, ids = estimate_aruco_pose(front.copy(), camera_matrix, dist_coeffs)
 
-    # TODO: only include one ID to prevent glitch 
     tag_location = None
     if rvecs is not None and ids[0] == 0:
         tag_location = tvecs[0] # currently only tracking one tag 
@@ -232,10 +250,8 @@ while True: # MAIN EXECUTION LOOP
         tag_location = tag_location[:, 0] # removethe exgtradimension 
         position_error = 0.002 * tag_location[0]
         velocity_error = position_error - last_error 
-        # integral_error += position_error 
         # turn position into velocity 
         pd_error = position_error # + 1 * velocity_error # + 0.05 * integral_error 
-        # scaled_position_error = -np.clip(pd_error, -1, 1)
         scaled_position_error = -np.clip(pd_error, -0.5, 0.5)
        
         distance_error = 0.0015 * (tag_location[2] - 750)

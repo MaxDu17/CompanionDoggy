@@ -52,9 +52,10 @@ sport_client = SportClient()
 sport_client.SetTimeout(10.0)
 sport_client.Init()
 
+sport_client.Dance2()
 # sport_client.Scrape() # doing the begging posture, risky 
-sport_client.StandDown()
-input() 
-sport_client.StandUp()
-sport_client.BalanceStand()
+# sport_client.StandDown()
+# input() 
+# sport_client.StandUp()
+# sport_client.BalanceStand()
 # sport_client.Pose(False) # locks / unlocks pose control
