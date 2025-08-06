@@ -131,7 +131,7 @@ def execute_behavior(name):
         return True 
     if name == "ILoveYou":
         print("I LOVE YOU EXECUTE -> should only print once")
-        if random.random() > 0.2: 
+        if random.random() > 0.35: 
             play_audio("/home/max/CompanionDoggy/assets/BBP_Dance1.mp3")
             # play_audio("/home/max/CompanionDoggy/assets/DogsOutDance1.mp3")
             sport_client.Dance1()
@@ -144,6 +144,7 @@ def execute_behavior(name):
         play_audio("/home/max/CompanionDoggy/assets/Bark.mp3")
         sport_client.StandUp()
         sport_client.BalanceStand()
+        time.sleep(1)
         return True 
 
     if name == "Thumb_Down": 
@@ -154,6 +155,7 @@ def execute_behavior(name):
     
     if name == "Closed_Fist":
         play_audio("/home/max/CompanionDoggy/assets/Bark.mp3")
+        time.sleep(2)
     
     if name == "EXCEPTIONAL_POUNCE":
         # ANNOUNCE  
