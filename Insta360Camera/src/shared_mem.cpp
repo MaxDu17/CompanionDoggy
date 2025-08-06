@@ -32,16 +32,59 @@ extern "C" {
 #include <semaphore.h>
 #include <sys/stat.h>
 #include <vector>
+#include <filesystem>
+
+#include <pwd.h>
+#include <grp.h>    // For initgroups()
 
 #define SHARED_MEM_NAME "/shared_image"
 #define SEMAPHORE_NAME "/image_semaphore"
+// #define IMAGE_SIZE 2880 * 1440 * 3// 1 MB image
 #define IMAGE_SIZE 1440 * 720 * 3// 1 MB image
+
 // #define IMAGE_SIZE 720 * 360 * 3// 1 MB image
 
 
 struct SharedMemory {
     char data[IMAGE_SIZE];
 };
+
+
+void drop_privileges(const char* username = "max") {
+    struct passwd* pw = getpwnam(username);
+    if (!pw) {
+        std::cerr << "Failed to find user: " << username << std::endl;
+        exit(1);
+    }
+
+    // Drop group privileges first
+    if (setgid(pw->pw_gid) != 0) {
+        perror("setgid failed");
+        exit(1);
+    }
+
+    // Drop supplementary groups
+    if (initgroups(username, pw->pw_gid) != 0) {
+        perror("initgroups failed");
+        exit(1);
+    }
+
+    // Drop user privileges
+    if (setuid(pw->pw_uid) != 0) {
+        perror("setuid failed");
+        exit(1);
+    }
+
+    // Check we're no longer root
+    if (geteuid() == 0) {
+        std::cerr << "Still running as root! Refusing to continue.\n";
+        exit(1);
+    }
+
+    std::cout << "Privileges dropped. Running as UID: " << getuid() << "\n";
+}
+
+
 
 
 class StreamProcessor : public ins_camera::StreamDelegate {
@@ -91,6 +134,7 @@ public:
         shm_unlink(SHARED_MEM_NAME); //necessary to work under sudo 
 
          // Open shared memory
+        umask(0); //necessary because we need to run this in root to access the camera 
         int shm_fd = shm_open(SHARED_MEM_NAME, O_CREAT | O_RDWR, 0666);
         if (shm_fd == -1) {
             std::cerr << "Error creating shared memory." << std::endl;
@@ -113,7 +157,7 @@ public:
         // Open semaphore
         sem = sem_open(SEMAPHORE_NAME, O_CREAT, 0666, 0);  // Initial value 0, i.e., not ready
         if (sem == SEM_FAILED) {
-            std::cerr << "Error creating semaphore." << std::endl;
+            std::cerr << "Error creating semaphore: " << strerror(errno) << std::endl;
             exit(1);
         }
 
@@ -183,13 +227,46 @@ public:
                     std::cout << time_taken << std::endl; 
                     cv::Mat bgr;
                     cv::cvtColor(yuv, bgr, cv::COLOR_YUV2BGR_I420);
+
+
+                    // 1. Split the image vertically into left and right halves
+                    int mid_col = bgr.cols / 2;
+
+                    //take entire right iamge and resize 
+                    cv::Mat right = bgr(cv::Rect(mid_col, 0, mid_col, bgr.rows)); //takes the entire image and resizes 
+                    cv::Mat smaller;
+                    // cv::resize(left, smaller, cv::Size(width / 4, height / 2), cv::INTER_LINEAR); // divide by 4 because we cut in half 
+                    cv::resize(right, smaller, cv::Size(right.cols / 2, right.rows / 2), cv::INTER_LINEAR); //cut in half 
+
+                    //crop the left image 
+                    cv::Mat left = bgr(cv::Rect(bgr.cols / 8, bgr.rows / 4, bgr.cols / 4, bgr.rows / 2));
+
+                    // cv::Mat left = bgr(cv::Rect(0, 0, mid_col, bgr.rows)); //takes the entire image and resizes 
+
+                    // cv::Mat smaller;
+                    // // cv::resize(left, smaller, cv::Size(width / 4, height / 2), cv::INTER_LINEAR); // divide by 4 because we cut in half 
+                    // cv::resize(left, smaller, cv::Size(left.cols / 2, left.rows / 2), cv::INTER_LINEAR); //cut in half 
+
+                    // //takes the middle half crop of the image directly 
+                    // cv::Mat right = bgr(cv::Rect(5 * bgr.cols / 8, bgr.rows / 4, bgr.cols / 4, bgr.rows / 2));
+                    // // bgr(cv::Rect(mid_col, 0, bgr.cols - mid_col, bgr.rows))
+                    // // std::cout << "Left Image: Rows = " << smaller.rows << ", Cols = " << smaller.cols << std::endl;
+                    // // std::cout << "Right Image: Rows = " << right.rows << ", Cols = " << right.cols << std::endl;
+
+                    cv::Mat result;
+
+                    cv::hconcat(left, smaller, result);
+                    // std::cout << "Right Image: Rows = " << result.rows << ", Cols = " << result.cols << std::endl;
+
+
+
                     // sendMatrix(bgr); 
-                    cv::Mat smaller; 
-                    cv::resize(bgr, smaller, cv::Size(width / 2, height / 2), cv::INTER_LINEAR);
-                    
+                    // cv::Mat smaller; 
+                    // cv::resize(bgr, smaller, cv::Size(width / 2, height / 2), cv::INTER_LINEAR);
+                    // smaller = bgr; 
                     // sem_wait(sem); 
                     // std::cout << avFrame->width << " " << avFrame->height << std::endl; 
-                    memcpy(shm_ptr->data, smaller.data, IMAGE_SIZE);
+                    memcpy(shm_ptr->data, result.data, IMAGE_SIZE);
                     // sem_post(sem); //ready! 
                 }
             }
@@ -227,6 +304,8 @@ private:
 
 std::shared_ptr<ins_camera::Camera> cam; //global variable! 
 
+std::string filepath = "/tmp/camera_ready";
+
 void onExit(){
    if (cam->StopLiveStreaming()) {
             std::cout << "Successfully closed stream!" << std::endl;
@@ -255,6 +334,14 @@ void signalHandler(int signum) {
         std::cerr << "failed to stop live." << std::endl;
     }
     cam->Close();
+
+    if (std::filesystem::exists(filepath)) {
+        if (std::filesystem::remove(filepath)) {
+            std::cout << "File deleted successfully: " << filepath << std::endl;
+        } else {
+            std::cerr << "Failed to delete file: " << filepath << std::endl;
+        }
+    }
 
     std::exit(signum); // Calls `atexit` functions before exiting
 }
@@ -286,6 +373,8 @@ int main(int argc, char* argv[]) {
         std::cerr << "failed to open camera" << std::endl;
         exit(EXIT_FAILURE); 
     }
+    drop_privileges("max");
+
 
     auto exposure = std::make_shared<ins_camera::ExposureSettings>();
     exposure->SetExposureMode(ins_camera::PhotographyOptions_ExposureMode::PhotographyOptions_ExposureOptions_Program_MANUAL);//set to manual exposure mode
@@ -315,12 +404,21 @@ int main(int argc, char* argv[]) {
     // param.video_resolution = ins_camera::VideoResolution::RES_720_360P30;
     // param.lrv_video_resulution = ins_camera::VideoResolution::RES_720_360P30;
     
-    param.video_bitrate = 1024 * 1024 / 6;
+    // param.video_bitrate = 1024 * 1024 / 6;
     param.enable_audio = false;
     param.using_lrv = false;
     std::cout << "trying to start stream" << std::endl; 
     if (cam->StartLiveStreaming(param)) {
         std::cout << "successfully started live stream" << std::endl;
     }
-    while(true); //hang until done 
+
+    // Create and open the file
+    std::ofstream file(filepath);
+    if (!file) {
+        std::cerr << "Failed to create file" << std::endl;
+    }
+    file.close();
+    cam->SetTimeout(1000);
+    while(cam->IsConnected()); 
+    // while(true); //hang until done 
 }

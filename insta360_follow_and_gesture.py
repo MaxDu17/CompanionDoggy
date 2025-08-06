@@ -45,6 +45,7 @@ if len(sys.argv)>1:
 else:
     ChannelFactoryInitialize(0)
 
+
 sport_client = SportClient()  
 sport_client.SetTimeout(10.0)
 sport_client.Init()
@@ -88,36 +89,86 @@ def process_result(result: GestureRecognizerResult, output_image: mp.Image, time
     if len(gestures) > 0:
         print(gestures[0][0].category_name)
         current_name = gestures[0][0].category_name
+        if current_name == "None":
+            current_name = "" 
     else:
         current_name = ""
-    # print("PROCESSING")
-    # execute_behavior(current_name)
 
-    # if not executing and time.time() - last_behavior > BEHAVIOR_COOLDOWN:
-    #     print("EXECUTING!!")
-    #     execute_behavior(current_name)
-    #     last_behavior = time.time()
-    # else:
-    #     print("COOLDOWN")
-    
-    # if current_name == "Open_Palm":
-    #     sport_client.Hello() 
 
+import socket
+import sys
+
+SOCKET_PATH = "/tmp/audio_socket"  # Inside container mount point
+
+
+
+def play_audio(file_path):
+    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    client.connect(SOCKET_PATH)
+    client.sendall(file_path.encode())
+    client.close()
+
+    print(f"[DOCKER] Sent play request for: {file_path}")
+
+
+# 1 - Closed fist, label: Closed_Fist
+# 2 - Open palm, label: Open_Palm
+# 3 - Pointing up, label: Pointing_Up
+# 4 - Thumbs down, label: Thumb_Down
+# 5 - Thumbs up, label: Thumb_Up
+# 6 - Victory, label: Victory
+# 7 - Love, label: ILoveYou
+
+import random
 def execute_behavior(name):
     if name == "Open_Palm":
-        print("OPEN PALM EXECUTE")
+        print("OPEN PALM EXECUTE -> should only print once")
         sport_client.Hello()
         return True 
     if name == "Victory":
-        print("VICTORY EXECUTE")
+        print("VICTORY EXECUTE -> should only print once")
         sport_client.Stretch()
         return True 
     if name == "ILoveYou":
-        print("I LOVE YOU EXECUTE")
-        sport_client.Dance1()
+        print("I LOVE YOU EXECUTE -> should only print once")
+        if random.random() > 0.35: 
+            play_audio("/home/max/CompanionDoggy/assets/BBP_Dance1.mp3")
+            # play_audio("/home/max/CompanionDoggy/assets/DogsOutDance1.mp3")
+            sport_client.Dance1()
+        else: 
+            play_audio("/home/max/CompanionDoggy/assets/DogsOutDance2.mp3")
+            sport_client.Dance2() # randomly select a dance to do. There's a rare dance that is quite long 
         return True 
-    return False 
+    if name == "Thumb_Up":
+        print("STANDING UP AND ACTIVE")
+        play_audio("/home/max/CompanionDoggy/assets/Bark.mp3")
+        sport_client.StandUp()
+        sport_client.BalanceStand()
+        time.sleep(1)
+        return True 
+
+    if name == "Thumb_Down": 
+        print("SITTING DOWN AND IDLE")
+        sport_client.StandDown()
+        return True 
+
     
+    if name == "Closed_Fist":
+        play_audio("/home/max/CompanionDoggy/assets/Bark.mp3")
+        time.sleep(2)
+    
+    if name == "EXCEPTIONAL_POUNCE":
+        # ANNOUNCE  
+        sport_client.FrontPounce()
+        return True 
+
+    if name == "EXCEPTIONAL_JUMP":
+        sport_client.FrontJump()
+        return True 
+
+
+    return False 
+
 
 options = GestureRecognizerOptions(
     base_options=BaseOptions(model_asset_path='gesture_recognizer.task'),
@@ -143,44 +194,67 @@ dist_coeffs = np.array(calibration["D"])
 start = time.time() 
 last_detection_frame = time.time()
 
+map1, map2 = cv2.fisheye.initUndistortRectifyMap(camera_matrix, dist_coeffs, np.eye(3), camera_matrix, (720, 720), cv2.CV_32FC1)
+
+
+active_control = False # master kill switch 
+ispressing = False 
+active_tracking = False # this is if we are tracking the large code  
+do_stop = False 
+
+behavior_dict = {
+    1 : "Thumb_Up",
+    2 : "Thumb_Down",
+    3 : "ILoveYou",
+    4 : "Open_Palm",
+    5 : "EXCEPTIONAL_POUNCE",
+    6 : "EXCEPTIONAL_JUMP"
+}
+
 while True: # MAIN EXECUTION LOOP 
     # safety  
     if remoteControl.getEstopState() == 1: 
         sport_client.Damp() 
         last_tag = None 
+    if remoteControl.getDisableState() == 1 and not ispressing:
+        active_control = not active_control 
+        ispressing = True 
+    if remoteControl.getDisableState() == 0:
+        ispressing = False 
+    
+    while True: #this needs to go up top to prevent program from freezinggi
+        key = cv2.waitKey(1)
+        if key == -1:  # no keycode reported
+            break
+        if key == ord('q'):
+            do_stop = True
+    if do_stop:
+        break 
 
-    # read = cam.get_camera_frame()
-    # if read is None:
-    #     continue 
-    # front, back = read.front_rgb, read.back_rgb 
-    # # Define camera intrinsic parameters (example values, replace with actual calibration data)
-    # camera_matrix = cam.K
-    # dist_coeffs = cam.D
 
     front = camera.receive_image(crop = "back")
-    # read = cam.get_camera_frame()
+    undistorted_front = cv2.remap(front, map1, map2, interpolation=cv2.INTER_LINEAR)
+
     if front is None:
+        print("failed to retrieve frame")
         continue 
     rvecs, tvecs, image, ids = estimate_aruco_pose(front.copy(), camera_matrix, dist_coeffs)
-    # TODO: only include one ID to prevent glitch 
+
     tag_location = None
     if rvecs is not None and ids[0] == 0:
         tag_location = tvecs[0] # currently only tracking one tag 
-        
+    elif rvecs is not None and ids[0][0] in behavior_dict: # make sure we are not in tracking mode
+        current_name = behavior_dict[ids[0][0]]
+
+    active_tracking = (tag_location is not None) 
+
     if tag_location is not None: 
-        # TODO: what happens to PD control when the tag isn't detected for a bit? 
         tag_location = tag_location[:, 0] # removethe exgtradimension 
         position_error = 0.002 * tag_location[0]
         velocity_error = position_error - last_error 
-        integral_error += position_error 
         # turn position into velocity 
         pd_error = position_error # + 1 * velocity_error # + 0.05 * integral_error 
-        # scaled_position_error = -np.clip(pd_error, -1, 1)
         scaled_position_error = -np.clip(pd_error, -0.5, 0.5)
-
-        # print(pd_error)
-        # print(velocity_error)
-        # print(integral_error)
        
         distance_error = 0.0015 * (tag_location[2] - 750)
         # distance_error = 0.0015 * (tag_location[2] - 2000)
@@ -190,35 +264,43 @@ while True: # MAIN EXECUTION LOOP
 
     
         last_error = position_error 
-        # print(distance_error)
-
-
-        print(scaled_distance_error, scaled_position_error)
+        # print(scaled_distance_error, scaled_position_error)
         # sport_client.Move(scaled_distance_error, scaled_position_error, yaw_error)
         sport_client.Move(scaled_distance_error, 0, scaled_position_error)
         # forwards, sideways, rotation 
     
-    color_output.append_data(cv2.cvtColor(image,cv2.COLOR_BGR2RGB))
-    # color_output.append_data(image)
-    # don't record video for deployment
 
-    # detect only if 1) sufficient cooldown 2) framerate 3) flag 
-
+    h, w = front.shape[:2]
+    x1 = w // 4
+    y1 = h // 4
+    x2 = 3 * w // 4
+    y2 = 3 * h // 4
     if time.time() - last_detection_frame > (1 / frame_rate_detector) and DETECT_GESTURES:
-        imgRGB = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        cropped_img = front[y1:y2, x1:x2]
+        imgRGB = cv2.cvtColor(cropped_img, cv2.COLOR_BGR2RGB)
+        # imgRGB = cv2.cvtColor(undistorted_front, cv2.COLOR_BGR2RGB)
+
         current_timestamp_ms = int(time.time() * 1000)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=imgRGB)
         recognizer.recognize_async(mp_image, current_timestamp_ms) #, time.time() - start)
-        cv2.putText(image, current_name, (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 0, 0), 4, cv2.LINE_AA)
+
         last_detection_frame = time.time()
-    if time.time()  - last_behavior > BEHAVIOR_COOLDOWN:
+    if time.time()  - last_behavior > BEHAVIOR_COOLDOWN and not active_tracking and active_control:
         executed = execute_behavior(current_name)
+        current_name = "" # clear just in case 
         if executed:
             last_behavior = time.time()
         
 
     if not HEADLESS_MODE: 
-        cv2.imshow("Output",image)
+        cv2.rectangle(undistorted_front, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)
+
+        cv2.putText(undistorted_front, "Detected behavior: " + current_name, (10, 75), cv2.FONT_HERSHEY_SIMPLEX, 1, (180, 180, 0), 2, cv2.LINE_AA)
+
+        cv2.putText(undistorted_front, "Control Status: " + ("active" if active_control else "disabled"), (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (180, 180, 0), 1, cv2.LINE_AA)
+        cv2.putText(undistorted_front, "Tracking status: " + str(active_tracking), (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (180, 180, 0), 1, cv2.LINE_AA)
+        cv2.imshow("Undistorted", undistorted_front)
+        cv2.imshow("Raw Feed",image)
         if cv2.waitKey(1) == 27:
             break
 

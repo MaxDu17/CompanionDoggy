@@ -90,10 +90,10 @@ line_detector = LineDetector(
     D = dist_coeffs
 )
 
-create_color_sliders("blue") #line_detector.preload_colors)
+create_color_sliders("white") #line_detector.preload_colors)
 
 ispressing = False 
-active_control = True 
+active_control = False # needs an orange button press to start and stop 
 do_stop = False 
 no_person = True 
 
@@ -103,8 +103,14 @@ prev_time = None
 
 Kp = -0.01
 Kd = -0.001 #-0.05  # You can tune this
-FORWARD_SPEED = 4 
-PERSON_SWITCH = True
+
+Kp *= 1 
+Kd *= 1
+FORWARD_SPEED = 5
+PERSON_SWITCH = False
+
+print(sport_client.SwitchGait(2)) # fast trot 
+print(sport_client.SpeedLevel(1)) # fast mode 
 
 while True: # MAIN EXECUTION LOOP 
     # safety  
@@ -135,7 +141,7 @@ while True: # MAIN EXECUTION LOOP
     cv2.putText(info["frame"], "Tracking status: " + info["message"], (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
 
     # detect person 
-    rvecs, tvecs, image, ids = estimate_aruco_pose(back.copy(), camera_matrix, dist_coeffs)
+    rvecs, tvecs, image, ids = estimate_aruco_pose(back.copy(), camera_matrix, dist_coeffs) # TODO: THIS MIGHT NOT BE CORRECT ANYMORE 
     tag_location = None
     if tvecs is not None and ids[0] == 0: # second 
         tag_location = tvecs[0] # currently only tracking one tag 
@@ -162,7 +168,9 @@ while True: # MAIN EXECUTION LOOP
 
     # print(info["angle"], info["x_at_target"])
     # print(best_line)
-    color_output.append_data(cv2.cvtColor(front,cv2.COLOR_BGR2RGB))
+    # color_output.append_data(cv2.cvtColor(front,cv2.COLOR_BGR2RGB))
+    color_output.append_data(cv2.cvtColor(back,cv2.COLOR_BGR2RGB))
+
 
     # angle_error= -0.02 * (info["angle"] - 90)
 
@@ -195,6 +203,8 @@ while True: # MAIN EXECUTION LOOP
     # scaled_position_error = -0.01 * info["x_at_target"]
         # scaled_position_error = -0.005 * info["x_at_target"]
     print(control_output)
+    # control_output = np.clip(control_output, -1.5, 1.5)
+
     cv2.putText(info["frame"], f"P: {round(P, 2)}, D: {round(D, 2)}, S: {FORWARD_SPEED}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (200, 200, 0), 2, cv2.LINE_AA)
 
     if active_control: 
