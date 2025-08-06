@@ -32,6 +32,10 @@ extern "C" {
 #include <semaphore.h>
 #include <sys/stat.h>
 #include <vector>
+#include <filesystem>
+
+#include <pwd.h>
+#include <grp.h>    // For initgroups()
 
 #define SHARED_MEM_NAME "/shared_image"
 #define SEMAPHORE_NAME "/image_semaphore"
@@ -44,6 +48,43 @@ extern "C" {
 struct SharedMemory {
     char data[IMAGE_SIZE];
 };
+
+
+void drop_privileges(const char* username = "max") {
+    struct passwd* pw = getpwnam(username);
+    if (!pw) {
+        std::cerr << "Failed to find user: " << username << std::endl;
+        exit(1);
+    }
+
+    // Drop group privileges first
+    if (setgid(pw->pw_gid) != 0) {
+        perror("setgid failed");
+        exit(1);
+    }
+
+    // Drop supplementary groups
+    if (initgroups(username, pw->pw_gid) != 0) {
+        perror("initgroups failed");
+        exit(1);
+    }
+
+    // Drop user privileges
+    if (setuid(pw->pw_uid) != 0) {
+        perror("setuid failed");
+        exit(1);
+    }
+
+    // Check we're no longer root
+    if (geteuid() == 0) {
+        std::cerr << "Still running as root! Refusing to continue.\n";
+        exit(1);
+    }
+
+    std::cout << "Privileges dropped. Running as UID: " << getuid() << "\n";
+}
+
+
 
 
 class StreamProcessor : public ins_camera::StreamDelegate {
@@ -93,6 +134,7 @@ public:
         shm_unlink(SHARED_MEM_NAME); //necessary to work under sudo 
 
          // Open shared memory
+        umask(0); //necessary because we need to run this in root to access the camera 
         int shm_fd = shm_open(SHARED_MEM_NAME, O_CREAT | O_RDWR, 0666);
         if (shm_fd == -1) {
             std::cerr << "Error creating shared memory." << std::endl;
@@ -115,7 +157,7 @@ public:
         // Open semaphore
         sem = sem_open(SEMAPHORE_NAME, O_CREAT, 0666, 0);  // Initial value 0, i.e., not ready
         if (sem == SEM_FAILED) {
-            std::cerr << "Error creating semaphore." << std::endl;
+            std::cerr << "Error creating semaphore: " << strerror(errno) << std::endl;
             exit(1);
         }
 
@@ -199,10 +241,6 @@ public:
                     //crop the left image 
                     cv::Mat left = bgr(cv::Rect(bgr.cols / 8, bgr.rows / 4, bgr.cols / 4, bgr.rows / 2));
 
-
-
-
-
                     // cv::Mat left = bgr(cv::Rect(0, 0, mid_col, bgr.rows)); //takes the entire image and resizes 
 
                     // cv::Mat smaller;
@@ -266,6 +304,8 @@ private:
 
 std::shared_ptr<ins_camera::Camera> cam; //global variable! 
 
+std::string filepath = "/tmp/camera_ready";
+
 void onExit(){
    if (cam->StopLiveStreaming()) {
             std::cout << "Successfully closed stream!" << std::endl;
@@ -294,6 +334,14 @@ void signalHandler(int signum) {
         std::cerr << "failed to stop live." << std::endl;
     }
     cam->Close();
+
+    if (std::filesystem::exists(filepath)) {
+        if (std::filesystem::remove(filepath)) {
+            std::cout << "File deleted successfully: " << filepath << std::endl;
+        } else {
+            std::cerr << "Failed to delete file: " << filepath << std::endl;
+        }
+    }
 
     std::exit(signum); // Calls `atexit` functions before exiting
 }
@@ -325,6 +373,8 @@ int main(int argc, char* argv[]) {
         std::cerr << "failed to open camera" << std::endl;
         exit(EXIT_FAILURE); 
     }
+    drop_privileges("max");
+
 
     auto exposure = std::make_shared<ins_camera::ExposureSettings>();
     exposure->SetExposureMode(ins_camera::PhotographyOptions_ExposureMode::PhotographyOptions_ExposureOptions_Program_MANUAL);//set to manual exposure mode
@@ -361,6 +411,13 @@ int main(int argc, char* argv[]) {
     if (cam->StartLiveStreaming(param)) {
         std::cout << "successfully started live stream" << std::endl;
     }
+
+    // Create and open the file
+    std::ofstream file(filepath);
+    if (!file) {
+        std::cerr << "Failed to create file" << std::endl;
+    }
+    file.close();
     cam->SetTimeout(1000);
     while(cam->IsConnected()); 
     // while(true); //hang until done 

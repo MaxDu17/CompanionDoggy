@@ -93,7 +93,7 @@ line_detector = LineDetector(
 create_color_sliders("white") #line_detector.preload_colors)
 
 ispressing = False 
-active_control = True 
+active_control = False # needs an orange button press to start and stop 
 do_stop = False 
 no_person = True 
 
