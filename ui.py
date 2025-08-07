@@ -26,15 +26,15 @@ class GUI:
             return "GUIassets/red.jpg"
 
     def speedinc(self):
-        self.speed += 1
+        self.speed += 0.25
         self.global_state.lock_set("speed", self.speed)
 
-        return "# " + str(self.speed) + "m/s"
+        return "# " + str(self.speed) + "min/mile"
     
     def speeddec(self):
-        self.speed -= 1
+        self.speed -= 0.25
         self.global_state.lock_set("speed", self.speed)
-        return "# " + str(self.speed) + "m/s"
+        return "# " + str(self.speed) + "min/mile"
 
     def build_gui(self):
         output = gr.Markdown("# Speed", elem_classes="speed-text")

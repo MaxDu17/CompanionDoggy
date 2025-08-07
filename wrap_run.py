@@ -4,6 +4,7 @@ from global_state import GlobalState
 from dog_controller import DogController
 import argparse
 from threading import Thread
+import signal
 
 def main(mode: str, speed: int):
     global_state = GlobalState()
@@ -22,6 +23,15 @@ def main(mode: str, speed: int):
     elif mode == "run":
         dog_controller_thread = Thread(target=dog_controller.run_fixed_speed, args=(speed,), daemon=True)
     dog_controller_thread.start()
+
+    try:
+        dog_controller_thread.join()
+    except KeyboardInterrupt:
+        print("\nKeyboard interrupt detected. Shutting down...")
+    finally:
+        dog_controller.color_output.close()
+        print("Resources cleaned up. Exiting.")
+        exit()
 
 
 if __name__ == "__main__":
