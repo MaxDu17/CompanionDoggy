@@ -18,9 +18,10 @@ class GUI:
         self.build_gui()
 
     def status(self):
-        if self.person_distance > 60:
+        print("CHECKING STATUS")
+        if self.person_distance > 500:
             return "GUIassets/green.jpg"
-        elif self.person_distance > 30:
+        elif self.person_distance > 300:
             return "GUIassets/yellow.jpg"
         else:
             return "GUIassets/red.jpg"
@@ -45,7 +46,12 @@ class GUI:
                     status_output = gr.Image("GUIassets/pending.png")
                     status_btn = gr.Button("Test Status")
                     status_btn.click(fn=self.status, outputs=status_output)
-                
+                    # Timer to auto-check every 2 seconds (adjust as needed)
+                    # timer = gr.Timer()
+                    # timer.run(fn=self.status, outputs=self.status_output, interval=0.5, every = True)
+                    timer = gr.Timer() # interval=0.5, repeat=True)
+                    timer.tick(fn=self.status, inputs=None) #, outputs=status_output)
+                        
                 with gr.Column(min_width=400):
                     speedinc_btn = gr.Button("Speed Up", scale=1)
                     speedinc_btn.click(fn=self.speedinc, outputs=output)

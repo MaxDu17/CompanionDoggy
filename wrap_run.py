@@ -16,7 +16,13 @@ def main(mode: str, speed: int):
 
     # Start dog controller in a separate thread
     dog_controller = DogController(global_state)
-    dog_controller.run_warmup(30)
+    # average_speed = dog_controller.run_warmup(30)
+    # print("AVERAGE SPEED", average_speed)
+    
+    average_speed = 2.57
+
+    average_speed = dog_controller.run_fixed_speed(speed = average_speed, duration = 30, mode = "run")
+
 
     # if mode == "warmup":
     #     dog_controller_thread = Thread(target=dog_controller.run_warmup, daemon=True)

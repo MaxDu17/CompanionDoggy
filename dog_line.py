@@ -417,4 +417,3 @@ if __name__ == "__main__":
         print(info["angle"], info["x_at_target"])
     out.release()
     cv2.destroyAllWindows()
-

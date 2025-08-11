@@ -74,10 +74,7 @@ class DogController:
         self.global_state.lock_set("person_distance", 100)
         last_tag = None 
         last_error = 0 
-        integral_error = 0
-        vanish_counter = 0 
 
-        current_name = ""
 
         ispressing = False 
         active_control = False # needs an orange button press to start and stop 
@@ -100,14 +97,21 @@ class DogController:
 
         start_time = time.time()
         start = time.time()
+        inactive_time = 0 
+        start_inactive = time.time()
+
         while True: # MAIN EXECUTION LOOP 
-            # safety  
+            # safety stuff 
             if self.remoteControl.getEstopState() == 1: 
                 self.sport_client.Damp() 
                 last_tag = None 
             if self.remoteControl.getDisableState() == 1 and not ispressing:
                 active_control = not active_control 
                 ispressing = True 
+                if not active_control: # this logic 
+                    start_inactive = time.time()
+                else: 
+                    inactive_time += (time.time() - start_inactive)
             if self.remoteControl.getDisableState() == 0:
                 ispressing = False 
             
@@ -116,10 +120,7 @@ class DogController:
                 if key == -1:  # no keycode reported
                     break
                 if key == ord('q'):
-                    do_stop = True
-            if do_stop:
-                break 
-
+                    quit()
 
             back, front = self.camera.receive_image() # .copy()
             if front is None:
@@ -140,6 +141,8 @@ class DogController:
 
                 scaled_distance_error = np.clip(distance_error, 0, 3) # only allow forward motion 
                 cv2.putText(info["frame"], "SPEED: " + str(round(scaled_distance_error, 1)), (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (140, 140, 140), 2, cv2.LINE_AA)
+                cv2.putText(info["frame"], "TIME_ELAPSED: " + str(round(time.time() - start_time - inactive_time, 1)), (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 1, (140, 140, 140), 2, cv2.LINE_AA)
+
                 print(scaled_distance_error)
 
                 self.speed_list.append(scaled_distance_error)
@@ -184,7 +187,7 @@ class DogController:
             cv2.putText(info["frame"], f"P: {round(P, 2)}, D: {round(D, 2)}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (200, 200, 0), 2, cv2.LINE_AA)
 
             if active_control: 
-                sport_client.Move(scaled_distance_error, 0, control_output) #  scaled_position_error)
+                self.sport_client.Move(scaled_distance_error, 0, control_output) #  scaled_position_error)
 
             # forwards, sideways, rotation
 
@@ -196,24 +199,21 @@ class DogController:
             time.sleep(max((1/self.frame_rate) - time_elapsed, 0))
             start = time.time() 
 
-            if duration is not None and time.time() - start_time > duration:
-                break 
+            if duration is not None and active_control and time.time() - start_time - inactive_time > duration:
+                return np.mean(self.speed_list)
 
     def run_interval(self, speed: int, duration: int = 30):
         base_speed = speed 
-        self.run_fixed_speed(base_speed - 1, duration) # start faster 
-        self.run_fixed_speed(base_speed + 2, duration) # slower 
-        self.run_fixed_speed(base_speed - 1, duration) # faster 
-        self.run_fixed_speed(base_speed + 2, duration) # slower 
+        self.run_fixed_speed(duration, mode = "run") # start faster 
+        self.run_fixed_speed(duration, mode = "walk") # slower 
+        self.run_fixed_speed(duration, mode = "run") # faster 
+        self.run_fixed_speed(duration, mode = "walk") # slower 
 
-    def run_fixed_speed(self, speed: int, duration: int = None):
+    def run_fixed_speed(self, speed: int, duration: int = None, mode = "run"):
         last_tag = None 
         last_error = 0 
-        integral_error = 0
-        vanish_counter = 0 
 
-        current_name = ""
-        speed = self.global_state.lock_get("speed") # minutes per mile
+        # speed = self.global_state.lock_get("speed") # minutes per mile # TODO: ENABLE SPEED SETTING ON ui
 
         ispressing = False 
         active_control = False # needs an orange button press to start and stop 
@@ -226,16 +226,22 @@ class DogController:
 
         Kp = -0.01
         Kd = -0.001 #-0.05  # You can tune this
-
-        Kp *= 1 
-        Kd *= 1
-        FORWARD_SPEED = 5 / (1 / 14) * (1 / speed) # JENN: is this right?
+        FORWARD_SPEED = speed #5 / (1 / 14) * (1 / speed) # JENN: is this right?
         PERSON_SWITCH = False
-
-        print(self.sport_client.SwitchGait(2)) # fast trot 
-        print(self.sport_client.SpeedLevel(1)) # fast mode 
+        
+        if mode == "run":
+            print(self.sport_client.SwitchGait(2)) # fast trot 
+            print(self.sport_client.SpeedLevel(1)) # fast mode 
+        elif mode == "walk":
+            print(self.sport_client.SwitchGait(1)) # regular trot 
+            print(self.sport_client.SpeedLevel(0)) # regular mode  
+        else:
+            raise Exception("Invalid mode")
 
         start_time = time.time()
+        start = time.time()
+        inactive_time = 0 
+        start_inactive = time.time()
 
         while True: # MAIN EXECUTION LOOP 
             # safety  
@@ -245,6 +251,10 @@ class DogController:
             if self.remoteControl.getDisableState() == 1 and not ispressing:
                 active_control = not active_control 
                 ispressing = True 
+                if not active_control: # this logic 
+                    start_inactive = time.time()
+                else: 
+                    inactive_time += (time.time() - start_inactive)
             if self.remoteControl.getDisableState() == 0:
                 ispressing = False 
             
@@ -275,6 +285,7 @@ class DogController:
                 cv2.putText(info["frame"], "PERSON DISTANCE " + str(round(distance, 1)), (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (140, 140, 140), 2, cv2.LINE_AA)
                 no_person = False
                 self.global_state.lock_set("person_distance", distance)
+                print(distance)
             else:
                 no_person = True 
                 self.global_state.lock_set("person_distance", np.inf)
@@ -316,13 +327,13 @@ class DogController:
 
             prev_error = error
             prev_time = current_time
-            print(control_output)
+            # print(control_output)
 
             cv2.putText(info["frame"], f"P: {round(P, 2)}, D: {round(D, 2)}, S: {FORWARD_SPEED}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (200, 200, 0), 2, cv2.LINE_AA)
 
             if active_control: 
                 # sport_client.Move(4, 0, np.clip(scaled_position_error, -1.5, 1.5)) #  scaled_position_error)
-                sport_client.Move(FORWARD_SPEED, 0, control_output) #  scaled_position_error)
+                self.sport_client.Move(FORWARD_SPEED, 0, control_output) #  scaled_position_error)
 
             # forwards, sideways, rotation
 
@@ -334,5 +345,5 @@ class DogController:
             time.sleep(max((1/self.frame_rate) - time_elapsed, 0))
             start = time.time() 
 
-            if duration is not None and time.time() - start_time > duration:
-                break 
+            if duration is not None and active_control and time.time() - start_time - inactive_time > duration:
+                return np.mean(self.speed_list)
