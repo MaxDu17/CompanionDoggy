@@ -26,7 +26,7 @@ class GlobalState:
         """Initialize Global State with a mutable `dict` of fields, and pointers to GUI/API Spec."""
         self.data = {
             "speed": 0,
-            "person_distance": 0,
+            "person_distance": None, # if no person detected, set to None
         }
         self.locks = {k: RLock() for k in self.data}
         self.gui = gui
