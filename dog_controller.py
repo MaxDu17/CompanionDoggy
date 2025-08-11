@@ -43,6 +43,7 @@ class DogController:
 
         self.color_output = imageio.get_writer(f"videos/{date_time}.mp4", fps = 10)
 
+        self.speed_list = list() # this keeps track of 
 
         self.sport_client = SportClient()  
         self.sport_client.SetTimeout(10.0)
@@ -53,7 +54,6 @@ class DogController:
 
         self.color_output = imageio.get_writer(f"videos/{date_time}.mp4", fps = 10)
         self.frame_rate = 10 
-        self.frame_rate_detector = 4
 
         self.camera = Insta360SharedMem() # ('127.0.0.1', 8080)
 
@@ -70,9 +70,134 @@ class DogController:
 
         create_color_sliders("white") #line_detector.preload_colors)
 
-    def run_warmup(self):
+    def run_warmup(self, duration = 30): 
         self.global_state.lock_set("person_distance", 100)
-        pass
+        last_tag = None 
+        last_error = 0 
+        integral_error = 0
+        vanish_counter = 0 
+
+        current_name = ""
+
+        ispressing = False 
+        active_control = False # needs an orange button press to start and stop 
+        do_stop = False 
+        no_person = True 
+
+        prev_error = None 
+        prev_time = None 
+
+
+        Kp = -0.01
+        Kd = -0.001 #-0.05  # You can tune this
+
+        Kp *= 1 
+        Kd *= 1
+        PERSON_SWITCH = False
+
+        print(self.sport_client.SwitchGait(2)) # fast trot 
+        print(self.sport_client.SpeedLevel(1)) # fast mode 
+
+        start_time = time.time()
+        start = time.time()
+        while True: # MAIN EXECUTION LOOP 
+            # safety  
+            if self.remoteControl.getEstopState() == 1: 
+                self.sport_client.Damp() 
+                last_tag = None 
+            if self.remoteControl.getDisableState() == 1 and not ispressing:
+                active_control = not active_control 
+                ispressing = True 
+            if self.remoteControl.getDisableState() == 0:
+                ispressing = False 
+            
+            while True: #this needs to go up top to prevent program from freezinggi
+                key = cv2.waitKey(1)
+                if key == -1:  # no keycode reported
+                    break
+                if key == ord('q'):
+                    do_stop = True
+            if do_stop:
+                break 
+
+
+            back, front = self.camera.receive_image() # .copy()
+            if front is None:
+                continue
+            info = self.line_detector.detect_line(front) # follow line 
+            cv2.putText(info["frame"], "Control Status: " + ("active" if active_control else "disabled"), (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1, cv2.LINE_AA)
+            cv2.putText(info["frame"], "Tracking status: " + info["message"], (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+
+            # detect person 
+            rvecs, tvecs, image, ids = estimate_aruco_pose(back.copy(), self.camera_matrix, self.dist_coeffs) # TODO: THIS MIGHT NOT BE CORRECT ANYMORE 
+            tag_location = None
+            scaled_distance_error = 0 # don't move forward unless you see the person 
+            if tvecs is not None and ids[0] == 0: # second 
+                tag_location = tvecs[0] # currently only tracking one tag 
+                tag_location = tag_location[:, 0] # removethe exgtradimension 
+                distance = tag_location[2]
+                distance_error = -0.01 * (tag_location[2] - 750) # negate because we're backwards. Adjust the value for good following distance 
+
+                scaled_distance_error = np.clip(distance_error, 0, 3) # only allow forward motion 
+                cv2.putText(info["frame"], "SPEED: " + str(round(scaled_distance_error, 1)), (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (140, 140, 140), 2, cv2.LINE_AA)
+                print(scaled_distance_error)
+
+                self.speed_list.append(scaled_distance_error)
+
+            if not info["success"]:
+                # show the error message on the camera 
+
+                cv2.imshow("Visual", info["frame"])
+                cv2.imshow("Back", back)
+
+                cv2.waitKey(1) # this is to allow the frame to be shown 
+                continue 
+
+
+            best_line = info["best_line"]
+            self.color_output.append_data(cv2.cvtColor(back,cv2.COLOR_BGR2RGB))
+
+            # Persistent storage (you'll need to initialize this in your control loop)
+            current_time = time.time() 
+            if prev_error is None:
+                prev_error = info["x_at_target"]
+                prev_time = time.time()
+
+            error = info["x_at_target"]
+            P = Kp * error
+
+            # Calculate time delta
+            dt = current_time - prev_time 
+            if dt == 0:
+                D = 0
+            else: 
+                # Calculate errors
+                d_error = (error - prev_error) / dt
+                # Compute P and D terms
+                D = Kd * d_error
+
+            control_output = P + D
+
+            prev_error = error
+            prev_time = current_time
+
+            cv2.putText(info["frame"], f"P: {round(P, 2)}, D: {round(D, 2)}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (200, 200, 0), 2, cv2.LINE_AA)
+
+            if active_control: 
+                sport_client.Move(scaled_distance_error, 0, control_output) #  scaled_position_error)
+
+            # forwards, sideways, rotation
+
+            cv2.imshow("Visual", info["frame"])
+            cv2.imshow("Back", back)
+
+            time_elapsed = time.time() - start 
+            # print(time_elapsed)
+            time.sleep(max((1/self.frame_rate) - time_elapsed, 0))
+            start = time.time() 
+
+            if duration is not None and time.time() - start_time > duration:
+                break 
 
     def run_interval(self, speed: int, duration: int = 30):
         base_speed = speed 
@@ -110,7 +235,7 @@ class DogController:
         print(self.sport_client.SwitchGait(2)) # fast trot 
         print(self.sport_client.SpeedLevel(1)) # fast mode 
 
-        start_time = datetime.now()
+        start_time = time.time()
 
         while True: # MAIN EXECUTION LOOP 
             # safety  
@@ -141,7 +266,7 @@ class DogController:
             cv2.putText(info["frame"], "Tracking status: " + info["message"], (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
 
             # detect person 
-            rvecs, tvecs, image, ids = estimate_aruco_pose(back.copy(), camera_matrix, dist_coeffs) # TODO: THIS MIGHT NOT BE CORRECT ANYMORE 
+            rvecs, tvecs, image, ids = estimate_aruco_pose(back.copy(), self.camera_matrix, self.dist_coeffs) # TODO: THIS MIGHT NOT BE CORRECT ANYMORE 
             tag_location = None
             if tvecs is not None and ids[0] == 0: # second 
                 tag_location = tvecs[0] # currently only tracking one tag 
@@ -166,7 +291,7 @@ class DogController:
 
 
             best_line = info["best_line"]
-            color_output.append_data(cv2.cvtColor(back,cv2.COLOR_BGR2RGB))
+            self.color_output.append_data(cv2.cvtColor(back,cv2.COLOR_BGR2RGB))
 
             # Persistent storage (you'll need to initialize this in your control loop)
             current_time = time.time() 
@@ -206,9 +331,8 @@ class DogController:
 
             time_elapsed = time.time() - start 
             # print(time_elapsed)
-            time.sleep(max((1/frame_rate) - time_elapsed, 0))
+            time.sleep(max((1/self.frame_rate) - time_elapsed, 0))
             start = time.time() 
 
-            if duration is not None:
-                if datetime.now() - start_time > timedelta(seconds=duration):
-                    break 
+            if duration is not None and time.time() - start_time > duration:
+                break 
