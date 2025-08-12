@@ -8,13 +8,16 @@ class GUI:
         self.global_state = global_state
         self.update_freq = 0.2
         self.css = """
-        .speed-text h1 {
+        .speed-text h2 {
             text-align: center; 
-            font-size: 80px !important;
+            font-size: 40px !important;
+        }
+        .mode-text h2 {
+            text-align: center; 
         }
         """
 
-        self.img_size = (300, 700)
+        self.img_size = (700, 700)
         self.green_img = np.zeros(self.img_size + (3,), dtype=np.uint8)
         self.green_img[:, :, 1] = 255
         self.red_img = np.zeros(self.img_size + (3,), dtype=np.uint8)
@@ -27,8 +30,6 @@ class GUI:
 
     def status(self):
         person_distance = self.global_state.lock_get("person_distance")
-        print(person_distance)
-        print("PREEDICTING")
         if person_distance is None:
             return self.red_img
         elif person_distance < 1200:
@@ -50,14 +51,15 @@ class GUI:
         return "## " + str(speed) + "m/s"
 
     def build_gui(self):
-        speed_value_output = gr.Markdown("## N/A", elem_classes="speed-text")
-        # status_output = gr.Markdown("## MODE", elem_classes="speed-text")
+        # speed_value_output = gr.Markdown(f"## {self.global_state.lock_get('speed')}", elem_classes="speed-text", every = self.update_freq)
+
+        # status_output = gr.Markdown(f"## OPERATION MODE: {self.global_state.lock_get('mode')}", elem_classes="mode-text", every = self.update_freq)
+
         # output = gr.Markdown("# Speed", elem_classes="speed-text")
 
         with gr.Blocks(css=self.css) as self.demo:
-            with gr.Row():      
+            with gr.Row():   
                 with gr.Column(scale=3):
-                    
                     vision_img = gr.Image(
                                 self.status,
                                 type="numpy",
@@ -69,16 +71,16 @@ class GUI:
                             )
 
                 
-                    timer = gr.Timer() 
-                    timer.tick(fn=self.status, inputs=None) #, outputs=status_output)
-                        
+                                        
                 with gr.Column(min_width=400):
+                    status_output = gr.Markdown(lambda: f"## OPERATION MODE: {self.global_state.lock_get('mode')}", elem_classes="mode-text", every = 1)
                     speedinc_btn = gr.Button("Speed Up", scale=1)
-                    speedinc_btn.click(fn=self.speedinc, outputs=speed_value_output)
-                    speed_title = gr.Markdown("## Current speed:", elem_classes="speed-subtext")
-                    speed_value_output.render()
-                    speeddec_btn = gr.Button("Speed Down", scale=1)
-                    speeddec_btn.click(fn=self.speeddec, outputs=speed_value_output)
+                    speedinc_btn.click(fn=self.speedinc) # , outputs=speed_value_output)
+                    speed_title = gr.Markdown(lambda: "## Current speed:", elem_classes="speed-subtext")
+                    speed_value_output = gr.Markdown(lambda: f"## {self.global_state.lock_get('speed')}", elem_classes="speed-text", every = 1)
+
+                    speeddec_btn = gr.Button("Slow Down", scale=1)
+                    speeddec_btn.click(fn=self.speeddec) #, outputs=speed_value_output)
 
     def gui(self):
         print("Starting Gradio UI")

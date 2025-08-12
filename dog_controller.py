@@ -72,11 +72,11 @@ class DogController:
         create_color_sliders("white") #line_detector.preload_colors)
 
     def run_warmup(self, duration = 30): 
-        self.global_state.lock_set("person_distance", 100)
         last_tag = None 
         last_error = 0 
 
         current_speed = 2
+        self.global_state.lock_set("speed", current_speed) # start aligning the global state 
         CHECK_WINDOW = 15 # around 1.5 seconds 
 
         ispressing = False 
@@ -91,8 +91,6 @@ class DogController:
         Kp = -0.01
         Kd = -0.001 #-0.05  # You can tune this
 
-        Kp *= 1 
-        Kd *= 1
         PERSON_SWITCH = False
 
         print(self.sport_client.SwitchGait(2)) # fast trot 
@@ -105,6 +103,7 @@ class DogController:
 
         while True: # MAIN EXECUTION LOOP 
             # safety stuff 
+            current_speed = self.global_state.lock_get("speed")
             if self.remoteControl.getEstopState() == 1: 
                 self.sport_client.Damp() 
                 last_tag = None 
@@ -113,9 +112,13 @@ class DogController:
                 ispressing = True 
                 if not active_control: # this logic 
                     start_inactive = time.time()
+                    self.global_state.lock_set("mode", "Warmup_Idle")
+
                 else: 
                     inactive_time += (time.time() - start_inactive)
                     self.distances_list.clear() #
+                    self.global_state.lock_set("mode", "Warmup")
+
             if self.remoteControl.getDisableState() == 0:
                 ispressing = False 
             
@@ -141,6 +144,8 @@ class DogController:
                 tag_location = tvecs[0] # currently only tracking one tag 
                 tag_location = tag_location[:, 0] # removethe exgtradimension 
                 distance = tag_location[2]
+                self.global_state.lock_set("person_distance", distance)
+
                 # distance_error = -0.01 * (tag_location[2] - 750) # negate because we're backwards. Adjust the value for good following distance 
 
                 # scaled_distance_error = np.clip(distance_error, 0, 3) # only allow forward motion 
@@ -151,6 +156,9 @@ class DogController:
 
                 # self.speed_list.append(scaled_distance_error)
                 self.distances_list.append(distance)
+            else:
+                self.global_state.lock_set("person_distance", None)
+
 
             if not info["success"]:
                 # show the error message on the camera 
@@ -205,6 +213,7 @@ class DogController:
                         print("BUMPING DOWN SPEED")
                         current_speed -= 0.5
                         current_speed = max(1, current_speed)
+                    self.global_state.lock_set("speed", current_speed)
                     self.distances_list.clear()
                 self.speed_list.append(current_speed)
                 self.sport_client.Move(current_speed, 0, control_output) #  scaled_position_error)
@@ -257,7 +266,6 @@ class DogController:
 
         Kp = -0.01
         Kd = -0.001 #-0.05  # You can tune this
-        FORWARD_SPEED = speed #5 / (1 / 14) * (1 / speed) # JENN: is this right?
         PERSON_SWITCH = True
         
         if mode == "run":
@@ -276,16 +284,22 @@ class DogController:
 
         while True: # MAIN EXECUTION LOOP 
             # safety  
+            speed = self.global_state.lock_get("speed")
             if self.remoteControl.getEstopState() == 1: 
                 self.sport_client.Damp() 
                 last_tag = None 
             if self.remoteControl.getDisableState() == 1 and not ispressing:
                 active_control = not active_control 
                 ispressing = True 
+
                 if not active_control: # this logic 
                     start_inactive = time.time()
+                    self.global_state.lock_set("mode", "Run_Idle")
+
                 else: 
                     inactive_time += (time.time() - start_inactive)
+                    self.global_state.lock_set("mode", "Run")
+
             if self.remoteControl.getDisableState() == 0:
                 ispressing = False 
             
@@ -360,11 +374,11 @@ class DogController:
             prev_time = current_time
             # print(control_output)
 
-            cv2.putText(info["frame"], f"P: {round(P, 2)}, D: {round(D, 2)}, S: {FORWARD_SPEED}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (200, 200, 0), 2, cv2.LINE_AA)
+            cv2.putText(info["frame"], f"P: {round(P, 2)}, D: {round(D, 2)}, S: {speed}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (200, 200, 0), 2, cv2.LINE_AA)
 
             if active_control: 
                 # sport_client.Move(4, 0, np.clip(scaled_position_error, -1.5, 1.5)) #  scaled_position_error)
-                self.sport_client.Move(FORWARD_SPEED, 0, control_output) #  scaled_position_error)
+                self.sport_client.Move(speed, 0, control_output) #  scaled_position_error)
 
             # forwards, sideways, rotation
 
