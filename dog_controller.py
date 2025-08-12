@@ -93,8 +93,8 @@ class DogController:
 
         PERSON_SWITCH = False
 
-        print(self.sport_client.SwitchGait(2)) # fast trot 
-        print(self.sport_client.SpeedLevel(1)) # fast mode 
+        # print(self.sport_client.SwitchGait(2)) # fast trot 
+        # print(self.sport_client.SpeedLevel(1)) # fast mode 
 
         start_time = time.time()
         start = time.time()
@@ -268,14 +268,14 @@ class DogController:
         Kd = -0.001 #-0.05  # You can tune this
         PERSON_SWITCH = True
         
-        if mode == "run":
-            print(self.sport_client.SwitchGait(2)) # fast trot 
-            print(self.sport_client.SpeedLevel(1)) # fast mode 
-        elif mode == "walk":
-            print(self.sport_client.SwitchGait(1)) # regular trot 
-            print(self.sport_client.SpeedLevel(0)) # regular mode  
-        else:
-            raise Exception("Invalid mode")
+        # if mode == "run":
+        #     print(self.sport_client.SwitchGait(2)) # fast trot 
+        #     print(self.sport_client.SpeedLevel(1)) # fast mode 
+        # elif mode == "walk":
+        #     print(self.sport_client.SwitchGait(1)) # regular trot 
+        #     print(self.sport_client.SpeedLevel(0)) # regular mode  
+        # else:
+        #     raise Exception("Invalid mode")
 
         start_time = time.time()
         start = time.time()

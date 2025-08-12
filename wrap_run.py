@@ -6,6 +6,7 @@ import argparse
 from threading import Thread
 import signal
 
+LOGS_DIR = "logs/"
 def main():
     global_state = GlobalState()
 

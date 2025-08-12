@@ -17,4 +17,8 @@ docker run -it --rm \
   -v /tmp:/tmp \
   -w /home/real \
   $IMAGE_NAME \
-  zsh -c 'source ~/.zshrc; conda activate robot; cd ~/CompanionDoggy; python insta360_line_following_advanced.py' #exec zsh -l'
+  zsh -c 'source ~/.zshrc; conda activate robot; cd ~/CompanionDoggy; python wrap_run.py' # exec zsh -l'
+  # zsh -c 'source ~/.zshrc;  cd ~/CompanionDoggy; conda activate robot; exec zsh -l'
+
+
+
