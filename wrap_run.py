@@ -16,12 +16,10 @@ def main(mode: str, speed: int):
 
     # Start dog controller in a separate thread
     dog_controller = DogController(global_state)
-    # average_speed = dog_controller.run_warmup(30)
+    # average_speed = dog_controller.run_warmup(3000)
     # print("AVERAGE SPEED", average_speed)
-    
-    average_speed = 2.57
 
-    average_speed = dog_controller.run_fixed_speed(speed = average_speed, duration = 30, mode = "run")
+    dog_controller.run_fixed_speed(speed = 4, duration = 3000, mode = "run")
 
 
     # if mode == "warmup":
@@ -45,7 +43,7 @@ def main(mode: str, speed: int):
 if __name__ == "__main__":
     # arg parse for mode
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", type=str, default="warmup", choices=["warmup", "interval", "run"])
+    # parser.add_argument("--mode", type=str, default="warmup", choices=["warmup", "interval", "run"])
     parser.add_argument("--speed", type=int, default=4)
     args = parser.parse_args()
 

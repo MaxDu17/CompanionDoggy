@@ -43,7 +43,8 @@ class DogController:
 
         self.color_output = imageio.get_writer(f"videos/{date_time}.mp4", fps = 10)
 
-        self.speed_list = list() # this keeps track of 
+        self.speed_list = list() # this keeps track of .
+        self.distances_list = list() 
 
         self.sport_client = SportClient()  
         self.sport_client.SetTimeout(10.0)
@@ -75,6 +76,8 @@ class DogController:
         last_tag = None 
         last_error = 0 
 
+        current_speed = 2
+        CHECK_WINDOW = 15 # around 1.5 seconds 
 
         ispressing = False 
         active_control = False # needs an orange button press to start and stop 
@@ -112,6 +115,7 @@ class DogController:
                     start_inactive = time.time()
                 else: 
                     inactive_time += (time.time() - start_inactive)
+                    self.distances_list.clear() #
             if self.remoteControl.getDisableState() == 0:
                 ispressing = False 
             
@@ -137,15 +141,16 @@ class DogController:
                 tag_location = tvecs[0] # currently only tracking one tag 
                 tag_location = tag_location[:, 0] # removethe exgtradimension 
                 distance = tag_location[2]
-                distance_error = -0.01 * (tag_location[2] - 750) # negate because we're backwards. Adjust the value for good following distance 
+                # distance_error = -0.01 * (tag_location[2] - 750) # negate because we're backwards. Adjust the value for good following distance 
 
-                scaled_distance_error = np.clip(distance_error, 0, 3) # only allow forward motion 
+                # scaled_distance_error = np.clip(distance_error, 0, 3) # only allow forward motion 
                 cv2.putText(info["frame"], "SPEED: " + str(round(scaled_distance_error, 1)), (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (140, 140, 140), 2, cv2.LINE_AA)
                 cv2.putText(info["frame"], "TIME_ELAPSED: " + str(round(time.time() - start_time - inactive_time, 1)), (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 1, (140, 140, 140), 2, cv2.LINE_AA)
 
-                print(scaled_distance_error)
+                # print(scaled_distance_error)
 
-                self.speed_list.append(scaled_distance_error)
+                # self.speed_list.append(scaled_distance_error)
+                self.distances_list.append(distance)
 
             if not info["success"]:
                 # show the error message on the camera 
@@ -187,7 +192,22 @@ class DogController:
             cv2.putText(info["frame"], f"P: {round(P, 2)}, D: {round(D, 2)}", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (200, 200, 0), 2, cv2.LINE_AA)
 
             if active_control: 
-                self.sport_client.Move(scaled_distance_error, 0, control_output) #  scaled_position_error)
+                # this is responsible for the speed control logic 
+                if len(self.distances_list) > CHECK_WINDOW:
+                    average_dists = self.distances_list[-1] - self.distances_list[0]
+                    print(current_speed, average_dists)
+
+                    if average_dists < -100:
+                        print("BUMPING UP SPEED")
+                        current_speed += 0.5
+                        current_speed = min(4, current_speed)
+                    elif average_dists > 200: # asymmetrical speeding up and slowing down 
+                        print("BUMPING DOWN SPEED")
+                        current_speed -= 0.5
+                        current_speed = max(1, current_speed)
+                    self.distances_list.clear()
+                self.speed_list.append(current_speed)
+                self.sport_client.Move(current_speed, 0, control_output) #  scaled_position_error)
 
             # forwards, sideways, rotation
 
@@ -204,16 +224,27 @@ class DogController:
 
     def run_interval(self, speed: int, duration: int = 30):
         base_speed = speed 
-        self.run_fixed_speed(duration, mode = "run") # start faster 
-        self.run_fixed_speed(duration, mode = "walk") # slower 
-        self.run_fixed_speed(duration, mode = "run") # faster 
-        self.run_fixed_speed(duration, mode = "walk") # slower 
+        if base_speed < 1.5:
+            # too slow for slower mode, need to bump up the starting speed 
+            slow_speed = base_speed 
+            fast_speed = base_speed + 1 
+        if base_speed >= 2.5:
+            slow_speed = base_speed - 1 
+            fast_speed = base_speed 
+        else:
+            slow_speed = base_speed - 0.5 
+            fast_speed = base_speed + 0.5 
+
+        self.run_fixed_speed(duration, speed = fast_speed, mode = "run") # start faster 
+        self.run_fixed_speed(duration, speed = slow_speed, mode = "run") # slower 
+        self.run_fixed_speed(duration, speed = fast_speed, mode = "run") # faster 
+        self.run_fixed_speed(duration, speed = slow_speed, mode = "run") # slower 
 
     def run_fixed_speed(self, speed: int, duration: int = None, mode = "run"):
         last_tag = None 
         last_error = 0 
+        speed = self.global_state.lock_set("speed", speed)
 
-        # speed = self.global_state.lock_get("speed") # minutes per mile # TODO: ENABLE SPEED SETTING ON ui
 
         ispressing = False 
         active_control = False # needs an orange button press to start and stop 
@@ -227,7 +258,7 @@ class DogController:
         Kp = -0.01
         Kd = -0.001 #-0.05  # You can tune this
         FORWARD_SPEED = speed #5 / (1 / 14) * (1 / speed) # JENN: is this right?
-        PERSON_SWITCH = False
+        PERSON_SWITCH = True
         
         if mode == "run":
             print(self.sport_client.SwitchGait(2)) # fast trot 
@@ -288,7 +319,7 @@ class DogController:
                 print(distance)
             else:
                 no_person = True 
-                self.global_state.lock_set("person_distance", np.inf)
+                self.global_state.lock_set("person_distance", None)
                 cv2.putText(info["frame"], "PERSON TAG NOT DETECTED", (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 170), 2, cv2.LINE_AA)
 
             if not info["success"] or (no_person and PERSON_SWITCH):

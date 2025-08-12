@@ -21,7 +21,7 @@ from PIL import Image
 class GlobalState:
     def __init__(
         self,
-        gui = None,
+        # gui = None,
     ) -> None:
         """Initialize Global State with a mutable `dict` of fields, and pointers to GUI/API Spec."""
         self.data = {
@@ -29,7 +29,7 @@ class GlobalState:
             "person_distance": None, # if no person detected, set to None
         }
         self.locks = {k: RLock() for k in self.data}
-        self.gui = gui
+        # self.gui = gui
 
     def lock_get(self, key: str) -> Any:
         """Thread-safe getter."""
@@ -42,15 +42,15 @@ class GlobalState:
         with self.locks[key]:
             self.data[key] = value
 
-            # Only update `GUI` if exists...
-            if self.gui is not None:
-                self._update_gui(key, value)
+    #         # Only update `GUI` if exists...
+    #         if self.gui is not None:
+    #             self._update_gui(key, value)
 
-    def _update_gui(self, key: str, value: Any) -> None:
-        # fmt: off
-        if key == "person_distance":                                                # String
-            self.gui.person_distance = value
-        # fmt: on
+    # def _update_gui(self, key: str, value: Any) -> None:
+    #     # fmt: off
+    #     if key == "person_distance":                                                # String
+    #         self.gui.person_distance = value
+    #     # fmt: on
 
 if __name__ == "__main__":
     global_state = GlobalState()
