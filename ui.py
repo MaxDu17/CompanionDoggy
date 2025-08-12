@@ -39,15 +39,17 @@ class GUI:
 
     def speedinc(self):
         speed = self.global_state.lock_get("speed")
-        speed += 0.5 
-        self.global_state.lock_set("speed", speed)
+        if "warmup" in self.global_state.lock_get("mode").lower():
+            speed += 0.2 
+            self.global_state.lock_set("speed", speed)
 
         return "## " + str(speed) + "m/s"
     
     def speeddec(self):
         speed = self.global_state.lock_get("speed")
-        speed -= 0.5 
-        self.global_state.lock_set("speed", speed)
+        if "warmup" in self.global_state.lock_get("mode").lower():
+            speed -= 0.2
+            self.global_state.lock_set("speed", speed)
         return "## " + str(speed) + "m/s"
 
     def build_gui(self):
@@ -77,7 +79,7 @@ class GUI:
                     speedinc_btn = gr.Button("Speed Up", scale=1)
                     speedinc_btn.click(fn=self.speedinc) # , outputs=speed_value_output)
                     speed_title = gr.Markdown(lambda: "## Current speed:", elem_classes="speed-subtext")
-                    speed_value_output = gr.Markdown(lambda: f"## {self.global_state.lock_get('speed')}", elem_classes="speed-text", every = 1)
+                    speed_value_output = gr.Markdown(lambda: f"## {round(self.global_state.lock_get('speed'), 1)}", elem_classes="speed-text", every = 1)
 
                     speeddec_btn = gr.Button("Slow Down", scale=1)
                     speeddec_btn.click(fn=self.speeddec) #, outputs=speed_value_output)

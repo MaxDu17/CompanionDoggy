@@ -34,7 +34,7 @@ else:
 from dog_line import LineDetector, create_color_sliders  
 
 class DogController:
-    def __init__(self, global_state: GlobalState):
+    def __init__(self, global_state: GlobalState, timestamps):
         self.global_state = global_state
         from unitree_sdk2py.go2.video.video_client import VideoClient
 
@@ -70,6 +70,7 @@ class DogController:
         )
 
         create_color_sliders("white") #line_detector.preload_colors)
+        self.timestamps = timestamps 
 
     def run_warmup(self, duration = 30): 
         last_tag = None 
@@ -113,11 +114,14 @@ class DogController:
                 if not active_control: # this logic 
                     start_inactive = time.time()
                     self.global_state.lock_set("mode", "Warmup_Idle")
+                    self.timestamps.append(("Warmup: Idle", time.time()))
 
                 else: 
                     inactive_time += (time.time() - start_inactive)
                     self.distances_list.clear() #
                     self.global_state.lock_set("mode", "Warmup")
+                    self.timestamps.append(("Warmup: Active", time.time()))
+
 
             if self.remoteControl.getDisableState() == 0:
                 ispressing = False 
@@ -229,6 +233,8 @@ class DogController:
             start = time.time() 
 
             if duration is not None and active_control and time.time() - start_time - inactive_time > duration:
+                self.timestamps.append(("Warmup: FINISHED", time.time()))
+
                 return np.mean(self.speed_list)
 
     def run_interval(self, speed: int, duration: int = 30):
@@ -244,19 +250,28 @@ class DogController:
             slow_speed = base_speed - 0.5 
             fast_speed = base_speed + 0.5 
 
-        self.run_fixed_speed(duration, speed = fast_speed, mode = "run") # start faster 
-        self.run_fixed_speed(duration, speed = slow_speed, mode = "run") # slower 
-        self.run_fixed_speed(duration, speed = fast_speed, mode = "run") # faster 
-        self.run_fixed_speed(duration, speed = slow_speed, mode = "run") # slower 
+        self.timestamps.append(("Entering Fast Interval", time.time()))
+        print("START FAST")
+        self.run_fixed_speed(duration = duration, speed = fast_speed, mode = "run", default_control = False) # start faster 
+        self.timestamps.append(("Entering Slow Interval", time.time()))
+        print("START SLOW")
+        self.run_fixed_speed(duration = duration, speed = slow_speed, mode = "run", default_control = True) # slower 
+        self.timestamps.append(("Entering Fast Interval", time.time()))
+        print("START FAST")
+        self.run_fixed_speed(duration = duration, speed = fast_speed, mode = "run", default_control = True) # faster 
+        print("START SLOW")
+        self.timestamps.append(("Entering Slow Interval", time.time()))
+        self.run_fixed_speed(duration = duration, speed = slow_speed, mode = "run", default_control = True) # slower 
+        print("DONE")
 
-    def run_fixed_speed(self, speed: int, duration: int = None, mode = "run"):
+    def run_fixed_speed(self, speed: int, duration: int = None, mode = "run", default_control = False):
         last_tag = None 
         last_error = 0 
         speed = self.global_state.lock_set("speed", speed)
 
 
         ispressing = False 
-        active_control = False # needs an orange button press to start and stop 
+        active_control = default_control #  False # needs an orange button press to start and stop 
         do_stop = False 
         no_person = True 
 
@@ -294,11 +309,15 @@ class DogController:
 
                 if not active_control: # this logic 
                     start_inactive = time.time()
+                    self.timestamps.append(("Constant speed: Idle", time.time()))
+
                     self.global_state.lock_set("mode", "Run_Idle")
 
                 else: 
                     inactive_time += (time.time() - start_inactive)
                     self.global_state.lock_set("mode", "Run")
+                    self.timestamps.append(("Constant speed: Active", time.time()))
+
 
             if self.remoteControl.getDisableState() == 0:
                 ispressing = False 
@@ -391,4 +410,6 @@ class DogController:
             start = time.time() 
 
             if duration is not None and active_control and time.time() - start_time - inactive_time > duration:
+                self.timestamps.append(("Constant Speed: DONE", time.time()))
+
                 return np.mean(self.speed_list)

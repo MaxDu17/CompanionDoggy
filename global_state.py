@@ -27,7 +27,7 @@ class GlobalState:
         self.data = {
             "speed": 0,
             "person_distance": None, # if no person detected, set to None
-            "mode" : "warmup"
+            "mode" : "warmup",
         }
         self.locks = {k: RLock() for k in self.data}
         # self.gui = gui
