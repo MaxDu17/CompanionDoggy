@@ -208,7 +208,9 @@ behavior_dict = {
     3 : "ILoveYou",
     4 : "Open_Palm",
     5 : "EXCEPTIONAL_POUNCE",
-    6 : "EXCEPTIONAL_JUMP"
+    6 : "EXCEPTIONAL_JUMP",
+    7 : "Closed_Fist",
+    8 : "Victory"
 }
 
 while True: # MAIN EXECUTION LOOP 
