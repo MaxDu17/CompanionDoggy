@@ -30,7 +30,10 @@ def main():
     global_state.lock_set("speed", average_speed)
 
 
-    dog_controller.run_interval(speed = average_speed, duration = 30)
+    slow_speed, fast_speed = dog_controller.run_interval(speed = average_speed, duration = 30)
+    timestamps.append(("FAST SPEED", fast_speed))
+    timestamps.append(("SLOW SPEED", slow_speed))
+    print(f"Fast speed: {fast_speed}. Slow speed: {slow_speed}")
     with open(os.path.join(LOGS_DIR, name + "_"     + str(round(time.time(), 0)) + ".txt"), "w") as f:
         for step in timestamps: 
             f.write(f"{step[0]},{step[1]}\n")

@@ -33,6 +33,21 @@ else:
 
 from dog_line import LineDetector, create_color_sliders  
 
+import socket
+import sys
+
+SOCKET_PATH = "/tmp/audio_socket"  # Inside container mount point
+
+
+def play_audio(file_path):
+    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    client.connect(SOCKET_PATH)
+    client.sendall(file_path.encode())
+    client.close()
+
+    print(f"[DOCKER] Sent play request for: {file_path}")
+
+
 class DogController:
     def __init__(self, global_state: GlobalState, timestamps):
         self.global_state = global_state
@@ -72,6 +87,7 @@ class DogController:
         create_color_sliders("white") #line_detector.preload_colors)
         self.timestamps = timestamps 
 
+
     def run_warmup(self, duration = 30): 
         last_tag = None 
         last_error = 0 
@@ -101,6 +117,8 @@ class DogController:
         start = time.time()
         inactive_time = 0 
         start_inactive = time.time()
+
+        played_sound = False 
 
         while True: # MAIN EXECUTION LOOP 
             # safety stuff 
@@ -232,6 +250,11 @@ class DogController:
             time.sleep(max((1/self.frame_rate) - time_elapsed, 0))
             start = time.time() 
 
+            if active_control and time.time() - start_time - inactive_time > duration - 5 and not played_sound:
+                played_sound = True 
+                play_audio("/home/max/CompanionDoggy/assets/WarningTone5s.mp3")
+
+
             if duration is not None and active_control and time.time() - start_time - inactive_time > duration:
                 self.timestamps.append(("Warmup: FINISHED", time.time()))
 
@@ -250,19 +273,20 @@ class DogController:
             slow_speed = base_speed - 0.5 
             fast_speed = base_speed + 0.5 
 
-        self.timestamps.append(("Entering Fast Interval", time.time()))
+        self.timestamps.append(("Entering Fast Interval: Idle", time.time()))
         print("START FAST")
         self.run_fixed_speed(duration = duration, speed = fast_speed, mode = "run", default_control = False) # start faster 
-        self.timestamps.append(("Entering Slow Interval", time.time()))
+        self.timestamps.append(("Entering Slow Interval: Active" , time.time()))
         print("START SLOW")
         self.run_fixed_speed(duration = duration, speed = slow_speed, mode = "run", default_control = True) # slower 
-        self.timestamps.append(("Entering Fast Interval", time.time()))
+        self.timestamps.append(("Entering Fast Interval: Active", time.time()))
         print("START FAST")
         self.run_fixed_speed(duration = duration, speed = fast_speed, mode = "run", default_control = True) # faster 
         print("START SLOW")
-        self.timestamps.append(("Entering Slow Interval", time.time()))
+        self.timestamps.append(("Entering Slow Interval: Active", time.time()))
         self.run_fixed_speed(duration = duration, speed = slow_speed, mode = "run", default_control = True) # slower 
         print("DONE")
+        return slow_speed, fast_speed 
 
     def run_fixed_speed(self, speed: int, duration: int = None, mode = "run", default_control = False):
         last_tag = None 
@@ -296,6 +320,8 @@ class DogController:
         start = time.time()
         inactive_time = 0 
         start_inactive = time.time()
+
+        played_sound = False 
 
         while True: # MAIN EXECUTION LOOP 
             # safety  
@@ -408,6 +434,11 @@ class DogController:
             # print(time_elapsed)
             time.sleep(max((1/self.frame_rate) - time_elapsed, 0))
             start = time.time() 
+
+            if active_control and time.time() - start_time - inactive_time > duration - 5 and not played_sound:
+                played_sound = True 
+                play_audio("/home/max/CompanionDoggy/assets/WarningTone5s.mp3")
+
 
             if duration is not None and active_control and time.time() - start_time - inactive_time > duration:
                 self.timestamps.append(("Constant Speed: DONE", time.time()))
