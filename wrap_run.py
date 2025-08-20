@@ -28,6 +28,21 @@ def main():
     average_speed = dog_controller.run_warmup(duration = 30)
     global_state.lock_set("mode", "Run_Idle")
     global_state.lock_set("speed", average_speed)
+    print(average_speed)
+    base_speed = average_speed
+    if base_speed < 1.5:
+        # too slow for slower mode, need to bump up the starting speed 
+        slow_speed = base_speed 
+        fast_speed = base_speed + 1 
+    if base_speed >= 2.5:
+        slow_speed = base_speed - 1 
+        fast_speed = base_speed 
+    else:
+        slow_speed = base_speed - 0.5 
+        fast_speed = base_speed + 0.5 
+    print(base_speed, slow_speed, fast_speed)
+    print("----------")
+
 
 
     slow_speed, fast_speed = dog_controller.run_interval(speed = average_speed, duration = 30)
