@@ -225,7 +225,7 @@ class DogController:
                 # this is responsible for the speed control logic 
                 if len(self.distances_list) > CHECK_WINDOW:
                     average_dists = self.distances_list[-1] - self.distances_list[0]
-                    print(current_speed, average_dists)
+                    # print(current_speed, average_dists)
 
                     if average_dists < -100:
                         print("BUMPING UP SPEED")
@@ -260,7 +260,7 @@ class DogController:
 
                 return np.mean(self.speed_list)
 
-    def run_interval(self, speed: int, duration: int = 30):
+    def run_interval(self, speed: int, duration: int = 30, logger = None, name = ""):
         base_speed = speed 
         if base_speed < 1.5:
             # too slow for slower mode, need to bump up the starting speed 
@@ -275,15 +275,24 @@ class DogController:
 
         self.timestamps.append(("Entering Fast Interval: Idle", time.time()))
         print("START FAST")
+        if logger is not None:
+            logger(self.timestamps, name)
         self.run_fixed_speed(duration = duration, speed = fast_speed, mode = "run", default_control = False) # start faster 
         self.timestamps.append(("Entering Slow Interval: Active" , time.time()))
+        if logger is not None:
+            logger(self.timestamps, name)
         print("START SLOW")
         self.run_fixed_speed(duration = duration, speed = slow_speed, mode = "run", default_control = True) # slower 
         self.timestamps.append(("Entering Fast Interval: Active", time.time()))
+        if logger is not None:
+            logger(self.timestamps, name)
         print("START FAST")
         self.run_fixed_speed(duration = duration, speed = fast_speed, mode = "run", default_control = True) # faster 
-        print("START SLOW")
+        
         self.timestamps.append(("Entering Slow Interval: Active", time.time()))
+        if logger is not None:
+            logger(self.timestamps, name)
+        print("START SLOW")
         self.run_fixed_speed(duration = duration, speed = slow_speed, mode = "run", default_control = True) # slower 
         print("DONE")
         return slow_speed, fast_speed 
@@ -375,7 +384,6 @@ class DogController:
                 cv2.putText(info["frame"], "PERSON DISTANCE " + str(round(distance, 1)), (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (140, 140, 140), 2, cv2.LINE_AA)
                 no_person = False
                 self.global_state.lock_set("person_distance", distance)
-                print(distance)
             else:
                 no_person = True 
                 self.global_state.lock_set("person_distance", None)

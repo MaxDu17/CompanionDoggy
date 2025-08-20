@@ -9,6 +9,13 @@ import time
 import os 
 LOGS_DIR = "logs/"
 import json 
+
+def dump(timestamps, name):
+    with open(os.path.join(LOGS_DIR, name + "_"     + str(round(time.time(), 0)) + ".txt"), "w") as f:
+        for step in timestamps: 
+            f.write(f"{step[0]},{step[1]}\n")
+
+
 def main():
     name = input("Who is on the dog? \n")
     global_state = GlobalState()
@@ -28,6 +35,7 @@ def main():
     average_speed = dog_controller.run_warmup(duration = 30)
     global_state.lock_set("mode", "Run_Idle")
     global_state.lock_set("speed", average_speed)
+    dump(timestamps, name)
     print(average_speed)
     base_speed = average_speed
     if base_speed < 1.5:
@@ -45,13 +53,14 @@ def main():
 
 
 
-    slow_speed, fast_speed = dog_controller.run_interval(speed = average_speed, duration = 30)
+    slow_speed, fast_speed = dog_controller.run_interval(speed = average_speed, duration = 30, logger = dump, name = name)
     timestamps.append(("FAST SPEED", fast_speed))
     timestamps.append(("SLOW SPEED", slow_speed))
     print(f"Fast speed: {fast_speed}. Slow speed: {slow_speed}")
-    with open(os.path.join(LOGS_DIR, name + "_"     + str(round(time.time(), 0)) + ".txt"), "w") as f:
-        for step in timestamps: 
-            f.write(f"{step[0]},{step[1]}\n")
+    dump(timestamps, name)
+    # with open(os.path.join(LOGS_DIR, name + "_"     + str(round(time.time(), 0)) + ".txt"), "w") as f:
+    #     for step in timestamps: 
+    #         f.write(f"{step[0]},{step[1]}\n")
 
 
 if __name__ == "__main__":
