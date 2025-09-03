@@ -26,5 +26,5 @@ while true; do
         echo "File does not exist: $FILE"
     fi
     # Wait for 5 seconds
-    sleep 5
+    sleep 0.1
 done

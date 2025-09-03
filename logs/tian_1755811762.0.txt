@@ -1,0 +1,9 @@
+Start Program,1755811247.1621296
+Warmup: Active,1755811602.654555
+Warmup: FINISHED,1755811632.750561
+Entering Fast Interval: Idle,1755811632.751374
+Constant speed: Active,1755811710.4817836
+Constant speed: Idle,1755811710.9879465
+Constant speed: Active,1755811714.6990316
+Constant Speed: DONE,1755811761.6763859
+Entering Slow Interval: Active,1755811761.6766455

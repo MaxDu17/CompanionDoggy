@@ -31,29 +31,29 @@ def main():
 
     dog_controller = DogController(global_state, timestamps)
     global_state.lock_set("mode", "Warmup_Idle")
+    # print("HERE")
+    # average_speed = dog_controller.run_warmup(duration = 30)
+    # global_state.lock_set("mode", "Run_Idle")
+    # global_state.lock_set("speed", average_speed)
+    # dump(timestamps, name)
+    # print(average_speed)
+    # base_speed = average_speed
+    # if base_speed < 1.5:
+    #     # too slow for slower mode, need to bump up the starting speed 
+    #     slow_speed = base_speed 
+    #     fast_speed = base_speed + 1 
+    # if base_speed >= 2.5:
+    #     slow_speed = base_speed - 1 
+    #     fast_speed = base_speed 
+    # else:
+    #     slow_speed = base_speed - 0.5 
+    #     fast_speed = base_speed + 0.5 
+    # print(base_speed, slow_speed, fast_speed)
+    # print("----------")
+    average_speed = 2.3
+    # print("MANUALLY SE AVERAGE SPEED")
 
-    average_speed = dog_controller.run_warmup(duration = 30)
-    global_state.lock_set("mode", "Run_Idle")
-    global_state.lock_set("speed", average_speed)
-    dump(timestamps, name)
-    print(average_speed)
-    base_speed = average_speed
-    if base_speed < 1.5:
-        # too slow for slower mode, need to bump up the starting speed 
-        slow_speed = base_speed 
-        fast_speed = base_speed + 1 
-    if base_speed >= 2.5:
-        slow_speed = base_speed - 1 
-        fast_speed = base_speed 
-    else:
-        slow_speed = base_speed - 0.5 
-        fast_speed = base_speed + 0.5 
-    print(base_speed, slow_speed, fast_speed)
-    print("----------")
-
-
-
-    slow_speed, fast_speed = dog_controller.run_interval(speed = average_speed, duration = 30, logger = dump, name = name)
+    slow_speed, fast_speed = dog_controller.run_interval(speed = average_speed, duration = 180, logger = dump, name = name)
     timestamps.append(("FAST SPEED", fast_speed))
     timestamps.append(("SLOW SPEED", slow_speed))
     print(f"Fast speed: {fast_speed}. Slow speed: {slow_speed}")

@@ -294,6 +294,31 @@ class DogController:
             logger(self.timestamps, name)
         print("START SLOW")
         self.run_fixed_speed(duration = duration, speed = slow_speed, mode = "run", default_control = True) # slower 
+        print("START FAST")
+        self.run_fixed_speed(duration = duration, speed = fast_speed, mode = "run", default_control = True) # faster 
+        
+        self.timestamps.append(("Entering Slow Interval: Active", time.time()))
+        if logger is not None:
+            logger(self.timestamps, name)
+        print("START SLOW")
+        self.run_fixed_speed(duration = duration, speed = slow_speed, mode = "run", default_control = True) # slower 
+        print("START FAST")
+        self.run_fixed_speed(duration = duration, speed = fast_speed, mode = "run", default_control = True) # faster 
+        
+        self.timestamps.append(("Entering Slow Interval: Active", time.time()))
+        if logger is not None:
+            logger(self.timestamps, name)
+        print("START SLOW")
+        self.run_fixed_speed(duration = duration, speed = slow_speed, mode = "run", default_control = True) # slower 
+        print("START FAST")
+        self.run_fixed_speed(duration = duration, speed = fast_speed, mode = "run", default_control = True) # faster 
+        
+        self.timestamps.append(("Entering Slow Interval: Active", time.time()))
+        if logger is not None:
+            logger(self.timestamps, name)
+        print("START SLOW")
+        self.run_fixed_speed(duration = duration, speed = slow_speed, mode = "run", default_control = True) # slower 
+        
         print("DONE")
         return slow_speed, fast_speed 
 
@@ -314,7 +339,7 @@ class DogController:
 
         Kp = -0.01
         Kd = -0.001 #-0.05  # You can tune this
-        PERSON_SWITCH = True
+        PERSON_SWITCH = False
         
         # if mode == "run":
         #     print(self.sport_client.SwitchGait(2)) # fast trot 

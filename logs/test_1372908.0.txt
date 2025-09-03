@@ -1,0 +1,7 @@
+Start Program,1372812.712979008
+Entering Fast Interval: Idle,1372814.629966752
+Constant speed: Active,1372845.80370864
+Constant Speed: DONE,1372878.452198112
+Entering Slow Interval: Active,1372878.457517184
+Constant Speed: DONE,1372908.481967136
+Entering Fast Interval: Active,1372908.483444192

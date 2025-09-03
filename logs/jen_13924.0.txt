@@ -1,0 +1,2 @@
+Start Program,13921.935389984
+Entering Fast Interval: Idle,13923.814546752

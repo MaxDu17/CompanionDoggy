@@ -47,7 +47,7 @@ class Insta360SharedMem:
     def reload_shared_memory(self):
         while self.use_signal and not os.path.exists("/tmp/camera_ready"):
             print("Waiting for camera to load!")
-            time.sleep(1)
+            time.sleep(0.1)
         self.fd = os.open(self.shm_path, os.O_RDWR)
         self.shared_memory = mmap.mmap(self.fd, self.IMAGE_SIZE, access=mmap.ACCESS_READ)
 
