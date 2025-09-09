@@ -38,48 +38,45 @@ method_key = {"none": "No Pacer", "watch": "Watch", "dog": "Embodied (Robot)"}
 colors = ["#C5c5c5", "#9b8da1", "#169c54", "#98d2ff", "#Ff8200"]
 
 def plot_by_axis(final_stats, ax=None, legend=True, rank=False):
-    # Regular columns only
-    regular_groups = ["Easy", "Intuitive", "Natural", "Fun", "Use Again"]
+    # Special columns only
+    special_groups = ["Predictable", "Helpful", "Trust"]
     
     # Indices for the data arrays (0-indexed)
-    regular_indices = [0, 1, 3, 4, 7]  # Easy, Intuitive, Natural, Fun, Use Again
+    special_indices = [2, 5, 6]  # Predictable, Helpful, Trust
     
     # let's rearrange the order for LRTB
-    new_order = np.array(["none", "watch", "dog"])
+    new_order = np.array(["watch", "dog"])  # Only watch and dog, no none
     labels = [method_key[a] for a in new_order]
 
     # Set up the bar positions and width
     bar_width = 0.15
     
     # Create the figure with single subplot
-    fig, ax = plt.subplots(figsize=(10, 4))
+    fig, ax = plt.subplots(figsize=(5, 4))
     hfont = {'fontname':'Palatino'}
     
     # Adjust subplot to leave space for legend below
     plt.subplots_adjust(bottom=0.3)
     
-    # Regular group positions
-    column_spacing = 0.8
-    r1_regular = np.arange(len(regular_groups)) * column_spacing
-    r2_regular = [x + bar_width for x in r1_regular]
-    r3_regular = [x + bar_width for x in r2_regular]
+    # Special group positions
+    column_spacing = 0.5
+    r1_special = np.arange(len(special_groups)) * column_spacing
+    r2_special = [x + bar_width for x in r1_special]
     
     ax.set_ylim(0.75, 7.25)
     
-    # Plot regular group (all three bars)
-    bars1_regular = ax.bar(r1_regular, np.array(final_stats["none"][0])[regular_indices], 
-                           yerr=final_stats["none"][1][regular_indices], bottom=0, 
-                           color='darkgrey', width=bar_width)
-    bars2_regular = ax.bar(r2_regular, np.array(final_stats["watch"][0])[regular_indices], 
-                           yerr=final_stats["watch"][1][regular_indices], bottom=0, 
+    # Plot special group (only watch and dog, no none)
+    bars2_special = ax.bar(r1_special, np.array(final_stats["watch"][0])[special_indices], 
+                           yerr=final_stats["watch"][1][special_indices], bottom=0, 
                            color='lightblue', width=bar_width)
-    bars3_regular = ax.bar(r3_regular, np.array(final_stats["dog"][0])[regular_indices], 
-                           yerr=final_stats["dog"][1][regular_indices], bottom=0, 
+    bars3_special = ax.bar(r2_special, np.array(final_stats["dog"][0])[special_indices], 
+                           yerr=final_stats["dog"][1][special_indices], bottom=0, 
                            color='mediumseagreen', width=bar_width)
     
-    # Set x-axis ticks and labels for regular group
-    ax.set_xticks(r2_regular, regular_groups, fontsize=12, font="Palatino")
-    ax.set_title("Experience with Pacing", fontname="Palatino", fontsize=14, pad=20)
+    # Set x-axis ticks and labels for special group
+    ax.set_xticks([(r1_special[i] + r2_special[i])/2 for i in range(len(special_groups))], 
+                  special_groups, fontsize=12, font="Palatino")
+    ax.set_title("Technology Use", fontname="Palatino", fontsize=14, pad=20)
     
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
@@ -90,12 +87,12 @@ def plot_by_axis(final_stats, ax=None, legend=True, rank=False):
     # Add legend
     if legend:
         sns.set(font="Palatino", style="white", font_scale=0.9)
-        ax.legend(labels, frameon=False, loc='lower center', bbox_to_anchor=(0.5, -0.25), ncol=3)
+        ax.legend(labels, frameon=False, loc='lower center', bbox_to_anchor=(0.5, -0.25), ncol=2)
 
     if rank:
-        plt.savefig('bar_overall_ranks_experience.png')
+        plt.savefig('bar_overall_ranks.png')
     else:
-        plt.savefig('bar_overall_likert_experience.png')
+        plt.savefig('bar_overall_likert.png')
     plt.show()
 
 plot_by_axis(final_stats, rank=False, legend=True)
