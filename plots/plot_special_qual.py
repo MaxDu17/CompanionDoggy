@@ -52,11 +52,12 @@ def plot_by_axis(final_stats, ax=None, legend=True, rank=False):
     bar_width = 0.15
     
     # Create the figure with single subplot
-    fig, ax = plt.subplots(figsize=(5, 4))
+    # fig, ax = plt.subplots(figsize=(5, 4))
+    fig, ax = plt.subplots(figsize=(5, 2))
     hfont = {'fontname':'Palatino'}
     
     # Adjust subplot to leave space for legend below
-    plt.subplots_adjust(bottom=0.3)
+    # plt.subplots_adjust(bottom=0.3)
     
     # Special group positions
     column_spacing = 0.5
@@ -76,13 +77,13 @@ def plot_by_axis(final_stats, ax=None, legend=True, rank=False):
     # Set x-axis ticks and labels for special group
     ax.set_xticks([(r1_special[i] + r2_special[i])/2 for i in range(len(special_groups))], 
                   special_groups, fontsize=12, font="Palatino")
-    ax.set_title("Technology Use", fontname="Palatino", fontsize=14, pad=20)
+    # ax.set_title("Technology Use", fontname="Palatino", fontsize=14, pad=20)
     
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.set_yticks([1,2,3,4,5,6,7])
     ax.set_yticklabels([1,2,3,4,5,6,7], fontname="Palatino")
-    ax.set_ylabel("Likert Scale", fontname="Palatino", fontsize=12)
+    # ax.set_ylabel("Likert Scale", fontname="Palatino", fontsize=12)
 
     # Add legend
     if legend:
@@ -91,8 +92,10 @@ def plot_by_axis(final_stats, ax=None, legend=True, rank=False):
 
     if rank:
         plt.savefig('bar_overall_ranks.png')
+        plt.savefig('bar_overall_ranks.pdf')
     else:
         plt.savefig('bar_overall_likert.png')
+        plt.savefig('bar_overall_likert.pdf')
     plt.show()
 
-plot_by_axis(final_stats, rank=False, legend=True)
+plot_by_axis(final_stats, rank=False, legend=False)

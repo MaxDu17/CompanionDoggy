@@ -43,14 +43,14 @@ def plot_quantitative(plot_type='diff'):
         errors = std_diff_times
         xlabel = 'Speed Difference (m/s)'
         title = 'Difference from Target Pace'
-        filename = 'quantitative_differences.png'
+        filename = 'quantitative_differences.pdf'
     elif plot_type == 'var':
         # Use variance data
         data = average_var_times
         errors = std_var_times
         xlabel = 'Variance (m/s)'
         title = 'Pace Variance'
-        filename = 'quantitative_variances.png'
+        filename = 'quantitative_variances.pdf'
     else:
         raise ValueError("plot_type must be 'diff' or 'var'")
     
@@ -67,15 +67,20 @@ def plot_quantitative(plot_type='diff'):
     
     # Plot the data
     y_positions = np.arange(len(categories))
-    ax.barh(y_positions, values, color=colors, xerr=error_values)
+    capsize = 2
+    error_kw = {'elinewidth': 1, 'capthick': 1, 'ecolor': 'black'}
+    ax.barh(y_positions, values, color=colors, xerr=error_values, capsize=capsize, error_kw=error_kw)
     
     # Add labels and title
     plt.xticks(font="Palatino")
     plt.yticks(font="Palatino")
+
+    # this is so we can plot better
     ax.set_yticks(y_positions)
-    ax.set_yticklabels(categories)
-    ax.set_xlabel(xlabel, font="Palatino")
-    ax.set_title(title, font="Palatino", fontsize=14, pad=20)
+    ax.set_yticklabels(["", "", ""] ) # categories)
+    # ax.set_xlabel(xlabel, font="Palatino")
+    #
+    # ax.set_title(title, font="Palatino", fontsize=14, pad=20)
     
     # For variance plots, use fewer x-axis ticks
     if plot_type == 'var':

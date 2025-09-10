@@ -429,7 +429,8 @@ def plot_user4_priya_speeds():
         "dog": 68        # seconds
     }
     
-    file_dir = "/Users/jennifergrannen/Documents/Stanford/iliad/CompanionDoggy/user_study_data/user4_Priya/"
+    # file_dir = "/Users/jennifergrannen/Documents/Stanford/iliad/CompanionDoggy/user_study_data/user4_Priya/"
+    file_dir = "/Users/maxjdu/Documents/GitHub/CompanionDoggy/logs/4_Priya"
     files = ["control.gpx", "watch.gpx", "dog.gpx"]
     method_key = {"control": "No Pacer", "watch": "Watch", "dog": "Dog"}
     colors = {"control": "darkgrey", "watch": "lightblue", "dog": "mediumseagreen"}
@@ -460,7 +461,8 @@ def plot_user4_priya_speeds():
             all_speed_data[condition] = []
     
     # Create the plot similar to process_prims.py
-    fig, ax = plt.subplots(figsize=(6, 5))
+    # fig, ax = plt.subplots(figsize=(6, 5))
+    fig, ax = plt.subplots(figsize=(5, 4))
     
     # Time points (5-second intervals)
     time_points = np.arange(0, 80, 5)  # 0, 5, 10, ..., 75 seconds
@@ -477,9 +479,9 @@ def plot_user4_priya_speeds():
                    linewidth=2, label=method_key[condition], markersize=4)
     
     # Styling similar to process_prims.py
-    ax.set_xlabel('Time (seconds)', fontsize=12, font="Palatino")
-    ax.set_ylabel('Speed (m/s)', fontsize=12, font="Palatino")
-    ax.set_title('User 4 Priya - Speed Over Time', fontsize=14, font="Palatino", pad=20)
+    # ax.set_xlabel('Time (seconds)', fontsize=12, font="Palatino")
+    # ax.set_ylabel('Speed (m/s)', fontsize=12, font="Palatino")
+    # ax.set_title('User 4 Priya - Speed Over Time', fontsize=14, font="Palatino", pad=20)
     
     # Set x-axis ticks every 10 seconds but only label the 30-second intervals
     ax.set_xticks([0, 10, 20, 30, 40, 50, 60, 70, 80])
@@ -540,6 +542,7 @@ def plot_user4_priya_speeds():
     
     # Save and show
     plt.savefig('user4_priya_speeds.png')
+    plt.savefig('user4_priya_speeds.pdf')
     plt.show()
     
     return all_speed_data

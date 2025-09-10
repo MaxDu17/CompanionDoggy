@@ -52,11 +52,13 @@ def plot_by_axis(final_stats, ax=None, legend=True, rank=False):
     bar_width = 0.15
     
     # Create the figure with single subplot
-    fig, ax = plt.subplots(figsize=(10, 4))
+    # fig, ax = plt.subplots(figsize=(10, 4))
     hfont = {'fontname':'Palatino'}
+    fig, ax = plt.subplots(figsize=(10, 2))
+
     
     # Adjust subplot to leave space for legend below
-    plt.subplots_adjust(bottom=0.3)
+    # plt.subplots_adjust(bottom=0.3)
     
     # Regular group positions
     column_spacing = 0.8
@@ -79,13 +81,13 @@ def plot_by_axis(final_stats, ax=None, legend=True, rank=False):
     
     # Set x-axis ticks and labels for regular group
     ax.set_xticks(r2_regular, regular_groups, fontsize=12, font="Palatino")
-    ax.set_title("Experience with Pacing", fontname="Palatino", fontsize=14, pad=20)
+    # ax.set_title("Experience with Pacing", fontname="Palatino", fontsize=14, pad=20)
     
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.set_yticks([1,2,3,4,5,6,7])
     ax.set_yticklabels([1,2,3,4,5,6,7], fontname="Palatino")
-    ax.set_ylabel("Likert Scale", fontname="Palatino", fontsize=12)
+    # ax.set_ylabel("Likert Scale", fontname="Palatino", fontsize=12)
 
     # Add legend
     if legend:
@@ -93,9 +95,11 @@ def plot_by_axis(final_stats, ax=None, legend=True, rank=False):
         ax.legend(labels, frameon=False, loc='lower center', bbox_to_anchor=(0.5, -0.25), ncol=3)
 
     if rank:
+        plt.savefig('bar_overall_ranks_experience.pdf')
         plt.savefig('bar_overall_ranks_experience.png')
     else:
+        plt.savefig('bar_overall_likert_experience.pdf')
         plt.savefig('bar_overall_likert_experience.png')
     plt.show()
 
-plot_by_axis(final_stats, rank=False, legend=True)
+plot_by_axis(final_stats, rank=False, legend=False)
