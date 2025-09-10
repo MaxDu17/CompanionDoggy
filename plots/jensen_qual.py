@@ -31,41 +31,39 @@ print("Questions:", ranking_questions)
 
 def plot_jensen_responses():
     """
-    Plot Jensen's individual responses for each ranking question with varying green alpha values
+    Plot Jensen's average responses with standard error for each ranking question
     """
     # Shortened question names for display
     question_names = ["Easy", "Intuitive", "Predictable", "Natural", "Fun", "Helpful", "Trust", "Use Again"]
     
+    # Calculate mean and standard error for each question across all sessions
+    means = np.mean(responses, axis=0)
+    std_errors = stats.sem(responses, axis=0)
+    
+    print("Jensen's average responses with standard error:")
+    for i, question in enumerate(question_names):
+        print(f"{question}: {means[i]:.2f} ± {std_errors[i]:.2f}")
+    
     # Create the figure
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(10, 6))
     
     # Set up the bar positions
-    bar_width = 0.15
-    column_spacing = 1.0
-    question_positions = np.arange(len(question_names)) * column_spacing
+    bar_width = 0.6
+    question_positions = np.arange(len(question_names))
     
-    # Define alpha values for different sessions (increasing from left to right)
-    alphas = [0.3, 0.5, 0.7, 0.9]  # For sessions 1, 2, 3, 4
-    base_color = 'mediumseagreen'  # Same shade of green for all sessions
-    
-    # Plot responses for each session
-    for session_idx, session_num in enumerate(session_numbers):
-        session_responses = responses[session_idx]
-        
-        # Calculate bar positions for this session
-        session_positions = [pos + (session_idx - 1.5) * bar_width for pos in question_positions]
-        
-        # Plot bars for this session
-        bars = ax.bar(session_positions, session_responses, 
-                     width=bar_width, 
-                     color=base_color, 
-                     alpha=alphas[session_idx],
-                     label=f'Session {session_num}')
+    # Plot bars with error bars
+    bars = ax.bar(question_positions, means, 
+                 width=bar_width, 
+                 color='mediumseagreen', 
+                 alpha=0.8,
+                 yerr=std_errors,
+                 capsize=0,
+                 error_kw={'linewidth': 2})
     
     # Set up the plot
     ax.set_xlabel('Questions', fontname="Palatino", fontsize=12)
     ax.set_ylabel('Likert Scale (1-7)', fontname="Palatino", fontsize=12)
-    ax.set_title("Jensen's Individual Responses Across Sessions", fontname="Palatino", fontsize=14, pad=20)
+    ax.set_title("Jensen's Average Responses Across Sessions", fontname="Palatino", fontsize=14, pad=20)
     
     # Set x-axis ticks and labels
     ax.set_xticks(question_positions)
@@ -80,17 +78,14 @@ def plot_jensen_responses():
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     
-    # Add legend
-    # ax.legend(frameon=False, loc='upper right', fontfamily="Palatino")
-    
     # Add grid
-    ax.grid(True, alpha=0.3, axis='y')
+    # ax.grid(True, alpha=0.3, axis='y')
     
     # Adjust layout
     plt.tight_layout()
     
     # Save and show
-    plt.savefig('jensen_individual_responses.png', dpi=300, bbox_inches='tight')
+    plt.savefig('jensen_average_responses.png', dpi=300, bbox_inches='tight')
     plt.show()
 
 # Run the plot
