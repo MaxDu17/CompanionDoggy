@@ -53,7 +53,7 @@ def plot_by_axis(final_stats, ax=None, legend=True, rank=False):
     
     # Create the figure with single subplot
     # fig, ax = plt.subplots(figsize=(5, 4))
-    fig, ax = plt.subplots(figsize=(5, 2))
+    fig, ax = plt.subplots(figsize=(5, 3.5))
     hfont = {'fontname':'Palatino'}
     
     # Adjust subplot to leave space for legend below
@@ -75,8 +75,9 @@ def plot_by_axis(final_stats, ax=None, legend=True, rank=False):
                            color='mediumseagreen', width=bar_width)
     
     # Set x-axis ticks and labels for special group
-    ax.set_xticks([(r1_special[i] + r2_special[i])/2 for i in range(len(special_groups))], 
-                  special_groups, fontsize=12, font="Palatino")
+    ax.set_xticks([(r1_special[i] + r2_special[i])/2 for i in range(len(special_groups))],
+                  special_groups, fontsize=14, font="Palatino")
+    ax.set_xticklabels(special_groups, fontsize=14, fontname="Palatino")
     # ax.set_title("Technology Use", fontname="Palatino", fontsize=14, pad=20)
     
     ax.spines['top'].set_visible(False)

@@ -55,8 +55,9 @@ def plot_quantitative(plot_type='diff'):
         raise ValueError("plot_type must be 'diff' or 'var'")
     
     # Create the figure and axis
-    fig, ax = plt.subplots(figsize=(5, 4))
-    
+    # fig, ax = plt.subplots(figsize=(5, 3))
+    fig, ax = plt.subplots(figsize=(4, 3))
+
     # Define categories and colors (reversed order)
     categories = ['Dog', 'Watch', 'No Pacer']
     colors = ['mediumseagreen', 'lightblue', 'darkgrey']

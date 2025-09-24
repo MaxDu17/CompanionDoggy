@@ -462,7 +462,7 @@ def plot_user4_priya_speeds():
     
     # Create the plot similar to process_prims.py
     # fig, ax = plt.subplots(figsize=(6, 5))
-    fig, ax = plt.subplots(figsize=(5, 4))
+    fig, ax = plt.subplots(figsize=(5, 3))
     
     # Time points (5-second intervals)
     time_points = np.arange(0, 80, 5)  # 0, 5, 10, ..., 75 seconds
@@ -475,9 +475,11 @@ def plot_user4_priya_speeds():
             if len(speeds) < 16:
                 speeds = speeds + [np.nan] * (16 - len(speeds))
             
-            ax.plot(time_points, speeds, 'o-', color=colors[condition], 
-                   linewidth=2, label=method_key[condition], markersize=4)
-    
+            # ax.plot(time_points, speeds, 'o-', color=colors[condition],
+            #        linewidth=2, label=method_key[condition], markersize=4)
+            #
+            ax.plot(time_points, speeds, color=colors[condition],
+                   linewidth=3, label=method_key[condition], markersize=4)
     # Styling similar to process_prims.py
     # ax.set_xlabel('Time (seconds)', fontsize=12, font="Palatino")
     # ax.set_ylabel('Speed (m/s)', fontsize=12, font="Palatino")

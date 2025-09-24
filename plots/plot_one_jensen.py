@@ -132,16 +132,17 @@ class GPXProcessor:
                 # Reset for next window
                 current_window_speeds = []
                 current_window_time = 0
-        
+                # Calculate area under the m/s curve (total distance)
+                # Area = sum of speeds * time_interval (since each point represents average speed over time_interval)
+        total_distance = sum(timed_speeds) * time_interval
+        print(
+            f"Area under m/s curve (total distance): {total_distance:.2f} meters ({total_distance / 1000:.2f} km)")
         if plot:
             plt.figure(figsize=(10, 6))
             plt.plot(timed_speeds, 'b-', linewidth=2)
             plt.xlabel('Time Window Index')
             
-            # Calculate area under the m/s curve (total distance)
-            # Area = sum of speeds * time_interval (since each point represents average speed over time_interval)
-            total_distance = sum(timed_speeds) * time_interval
-            print(f"Area under m/s curve (total distance): {total_distance:.2f} meters ({total_distance/1000:.2f} km)")
+
             
             if use_mph:
                 # Convert m/s to mph (1 m/s = 2.23694 mph)
@@ -163,7 +164,8 @@ def plot_jensen_session3_speeds():
     Plot Jensen's session 3 speed data with target speed lines
     """
     # Jensen's session 3 file path
-    file_dir = "/Users/jennifergrannen/Documents/Stanford/iliad/CompanionDoggy/user_study_data/Jensen/"
+    # file_dir = "/Users/jennifergrannen/Documents/Stanford/iliad/CompanionDoggy/user_study_data/Jensen/"
+    file_dir = "/Users/maxjdu/Documents/GitHub/CompanionDoggy/logs/jensen/"
     filepath = os.path.join(file_dir, "session3.gpx")
     
     print(f"Processing Jensen's session 3 data...")
@@ -180,7 +182,11 @@ def plot_jensen_session3_speeds():
     print(f"Jensen session 3: {len(jensen_speeds)} data points (80 seconds)")
     
     # Create the plot
-    fig, ax = plt.subplots(figsize=(5, 4))
+    # fig, ax = plt.subplots(figsize=(5, 4))
+    # fig, ax = plt.subplots(figsize=(4, 3))
+    # fig, ax = plt.subplots(figsize=(6, 3))
+    fig, ax = plt.subplots(figsize=(7, 3))
+
     
     # Time points (5-second intervals) in minutes
     time_points = np.arange(0, len(jensen_speeds) * 5, 5) / 60  # Convert to minutes
@@ -208,7 +214,7 @@ def plot_jensen_session3_speeds():
     ax.spines['right'].set_visible(False)
     
     # Add alternating target speed line (fast-slow-fast pattern every 30 seconds)
-    fast_target = 2.3  # m/s
+    fast_target = 2.5  # m/s
     slow_target = 1.8  # m/s
     
     # Create time and target arrays for the alternating pattern (in minutes)
@@ -245,11 +251,17 @@ def plot_jensen_session3_speeds():
     # Plot the alternating target line
     ax.plot(target_times, target_speeds, '--', color='red', alpha=0.7, linewidth=2, 
            label='Target Pattern')
-    
+
+    # Change y-axis tick label font size
+    ax.tick_params(axis="y", labelsize=12)
+
+    # Change x-axis tick label font size
+    ax.tick_params(axis="x", labelsize=12)
+
     # Add labels and title
-    ax.set_xlabel('Time (minutes)', fontsize=12, font="Palatino")
-    ax.set_ylabel('Speed (m/s)', fontsize=12, font="Palatino")
-    ax.set_title("Jensen's Session 3 - Speed Over Time", fontsize=14, font="Palatino", pad=20)
+    # ax.set_xlabel('Time (minutes)', fontsize=12, font="Palatino")
+    # ax.set_ylabel('Speed (m/s)', fontsize=12, font="Palatino")
+    # ax.set_title("Jensen's Session 3 - Speed Over Time", fontsize=14, font="Palatino", pad=20)
     
     # Add legend
     # ax.legend(frameon=False, loc='upper right', fontfamily="Palatino")

@@ -4,12 +4,13 @@ import seaborn as sns
 from scipy import stats
 
 # Jensen's speed data (m/s)
-jensen_speeds = [1.180244186, 1.727868852, 1.837604563, 1.92775]
+jensen_speeds = [1.180244186, 1.727868852, 1.837604563, 1.92775, 1.65]
 jensen_distances = [
     2030.02,
     2108,
     2416.45,
-    2467.52
+    2467.52,
+    2024.74
 ]
 jensen_total_distances = [sum(jensen_distances[:i+1]) for i in range(len(jensen_distances))]
 
@@ -17,7 +18,7 @@ jensen_total_distances = [sum(jensen_distances[:i+1]) for i in range(len(jensen_
 time_points = np.arange(1, len(jensen_speeds)+1, 1)  # 0, 5, 10, 15 seconds
 
 # Flag to choose what to plot
-plot_speed = False  # Set to False to plot total distance instead
+plot_speed = True  # Set to False to plot total distance instead
 
 print("Jensen's speeds:", jensen_speeds)
 print("Jensen's total distances:", jensen_total_distances)
@@ -29,7 +30,7 @@ def plot_jensen_data():
     """
     # Create the figure and axis
     # fig, ax = plt.subplots(figsize=(4, 5))
-    fig, ax = plt.subplots(figsize=(4, 3))
+    fig, ax = plt.subplots(figsize=(3, 3))
 
     # Choose data to plot based on flag
     if plot_speed:
@@ -47,9 +48,9 @@ def plot_jensen_data():
         title = "Jensen's Total Distance Over Time"
         filename = 'jensen_distances.pdf'
         # Set y-axis ticks for distance (auto-scale)
-        ax.set_yticks([2, 4, 6, 8, 10])
-        ax.set_yticklabels([2, 4, 6, 8, 10], font="Palatino")
-        ax.set_ylim(0, 10)
+        ax.set_yticks([2, 4, 6, 8, 10, 12])
+        ax.set_yticklabels([2, 4, 6, 8, 10, 12], font="Palatino")
+        ax.set_ylim(0, 12)
 
         # ax.tick_params(axis='y', labelsize=10)
     
@@ -71,10 +72,10 @@ def plot_jensen_data():
     ax.spines['right'].set_visible(False)
 
     # Change y-axis tick label font size
-    ax.tick_params(axis="y", labelsize=14)
+    ax.tick_params(axis="y", labelsize=12)
 
     # Change x-axis tick label font size
-    ax.tick_params(axis="x", labelsize=14)
+    ax.tick_params(axis="x", labelsize=12)
     
     # Add grid
     # ax.grid(True, alpha=0.3)

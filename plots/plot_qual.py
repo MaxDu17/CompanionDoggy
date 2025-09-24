@@ -54,7 +54,8 @@ def plot_by_axis(final_stats, ax=None, legend=True, rank=False):
     # Create the figure with single subplot
     # fig, ax = plt.subplots(figsize=(10, 4))
     hfont = {'fontname':'Palatino'}
-    fig, ax = plt.subplots(figsize=(10, 2))
+    # fig, ax = plt.subplots(figsize=(10, 2))
+    fig, ax = plt.subplots(figsize=(10, 3.5))
 
     
     # Adjust subplot to leave space for legend below
@@ -80,7 +81,9 @@ def plot_by_axis(final_stats, ax=None, legend=True, rank=False):
                            color='mediumseagreen', width=bar_width)
     
     # Set x-axis ticks and labels for regular group
-    ax.set_xticks(r2_regular, regular_groups, fontsize=12, font="Palatino")
+    ax.set_xticks(r2_regular, regular_groups, fontsize=14, font="Palatino")
+    ax.set_xticklabels(regular_groups, fontsize=14, fontname="Palatino")
+
     # ax.set_title("Experience with Pacing", fontname="Palatino", fontsize=14, pad=20)
     
     ax.spines['top'].set_visible(False)
